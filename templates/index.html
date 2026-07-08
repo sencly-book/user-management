@@ -19,4 +19,42 @@
     <a href="/login" class="btn btn-primary">前往登录</a>
     {% endif %}
 </div>
+
+<div class="card">
+    <h2>搜索用户</h2>
+    <form method="get" action="/search" class="search-form">
+        <input type="text" name="keyword" class="form-input search-input" placeholder="搜索用户名或邮箱..." value="{{ keyword }}" required>
+        <button type="submit" class="btn btn-primary search-btn">搜索</button>
+    </form>
+
+    {% if search_results is not none %}
+    <div class="search-results">
+        <h3>搜索结果</h3>
+        {% if search_results %}
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th>手机</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in search_results %}
+                <tr>
+                    <td>{{ row.id }}</td>
+                    <td>{{ row.username }}</td>
+                    <td>{{ row.email }}</td>
+                    <td>{{ row.phone }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-result">无搜索结果</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

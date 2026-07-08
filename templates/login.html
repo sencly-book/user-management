@@ -15,6 +15,9 @@
         {% if error %}
         <div class="error-message">{{ error }}</div>
         {% endif %}
+        {% if msg %}
+        <div class="success-message">{{ msg }}</div>
+        {% endif %}
         <button type="submit" class="btn btn-primary">登录</button>
     </form>
 </div>

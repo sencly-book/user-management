@@ -159,6 +159,78 @@ body {
     margin-bottom: 12px;
 }
 
+/* 成功消息 */
+.success-message {
+    background-color: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 6px;
+    color: #52c41a;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+/* 搜索区域 */
+.search-section {
+    margin: 20px 0;
+    padding: 16px 0;
+    border-top: 1px solid #f0f0f0;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+}
+
+.search-btn {
+    width: auto;
+    margin-top: 0;
+    white-space: nowrap;
+    padding: 10px 20px;
+}
+
+/* 搜索结果表格 */
+.search-results {
+    margin-bottom: 20px;
+}
+
+.result-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.result-table th {
+    background: #667eea;
+    color: #fff;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.result-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.result-table tbody tr:hover {
+    background-color: #f5f7ff;
+}
+
+.no-result {
+    color: #999;
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+}
+
 /* 用户信息列表 */
 .user-info-list {
     list-style: none;

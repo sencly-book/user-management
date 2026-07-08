@@ -1,9 +1,32 @@
 import os
-from flask import Flask, render_template, request, redirect, session
+import sqlite3
+from flask import Flask, render_template, request, redirect, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24).hex())
+
+# ========== 数据库初始化 ==========
+
+def init_db():
+    os.makedirs("data", exist_ok=True)
+    conn = sqlite3.connect("data/users.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT,
+            phone TEXT
+        )
+    """)
+    # 插入默认用户（使用 INSERT OR IGNORE 防止重复）
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('admin', 'admin123', 'admin@example.com', '13800138000')")
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('alice', 'alice2025', 'alice@example.com', '13900139001')")
+    conn.commit()
+    conn.close()
+    print("[DB] 数据库初始化完成")
 
 USERS = {
     "admin": {
@@ -54,7 +77,7 @@ def index():
     user_info = None
     if username and username in USERS:
         user_info = USERS[username]
-    return render_template("index.html", user=user_info)
+    return render_template("index.html", user=user_info, search_results=None, keyword="")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -80,7 +103,71 @@ def login():
         record_failure(client_ip)
         return render_template("login.html", error="用户名或密码错误")
 
-    return render_template("login.html")
+    msg = request.args.get("msg", "")
+    return render_template("login.html", msg=msg)
+
+
+@app.route("/report")
+def download_report():
+    return send_from_directory(".", "安全漏洞审计报告.pdf", as_attachment=True)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+
+        # 使用参数化查询防止 SQL 注入
+        sql = "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)"
+        print(f"[SQL] {sql} | 参数: username={username}, password={password}, email={email}, phone={phone}", flush=True)
+        conn = sqlite3.connect("data/users.db")
+        c = conn.cursor()
+        try:
+            c.execute(sql, (username, password, email, phone))
+            conn.commit()
+            return redirect("/login?msg=注册成功，请登录")
+        except Exception as e:
+            conn.rollback()
+            return render_template("register.html", error=f"注册失败: {e}")
+        finally:
+            conn.close()
+
+    return render_template("register.html")
+
+
+@app.route("/search", methods=["GET"])
+def search():
+    keyword = request.args.get("keyword", "")
+
+    # 使用参数化查询防止 SQL 注入
+    sql = "SELECT id, username, email, phone FROM users WHERE username LIKE ? OR email LIKE ?"
+    params = (f"%{keyword}%", f"%{keyword}%")
+    print(f"[SQL] {sql} | 参数: keyword={keyword}", flush=True)
+
+    results = []
+    if keyword:
+        conn = sqlite3.connect("data/users.db")
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute(sql, params)
+            rows = c.fetchall()
+            for row in rows:
+                results.append(dict(row))
+            print(f"[SQL] 命中 {len(results)} 条记录", flush=True)
+        except Exception as e:
+            print(f"[SQL] 查询出错: {e}")
+        finally:
+            conn.close()
+
+    username = session.get("username")
+    user_info = None
+    if username and username in USERS:
+        user_info = USERS[username]
+    return render_template("index.html", user=user_info, search_results=results, keyword=keyword)
 
 
 @app.route("/logout")
@@ -90,5 +177,6 @@ def logout():
 
 
 if __name__ == "__main__":
+    init_db()
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
