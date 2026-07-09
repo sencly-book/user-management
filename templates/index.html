@@ -12,7 +12,8 @@
         <li><span class="info-label">角色：</span>{{ user.role }}</li>
         <li><span class="info-label">余额：</span>{{ user.balance }}</li>
     </ul>
-    <a href="/logout" class="btn btn-danger">退出登录</a>
+    <a href="/upload" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">上传头像</a>
+    <a href="/logout" class="btn btn-danger" style="display: inline-block;">退出登录</a>
     {% else %}
     <h2>请先登录</h2>
     <p>您尚未登录，请先登录系统查看用户信息。</p>

@@ -83,6 +83,27 @@ POST /register  username="hacker', 'hacked', ...); --"
 → 原 SQL: INSERT INTO users VALUES ('hacker', 'hacked', ...); --', ...)
 ```
 
+### 第三轮：文件上传漏洞（1 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 11 | **任意文件上传** | 🔴 严重 | 上传接口无文件类型检查，可上传 .html、.py、.bat 等危险文件 |
+
+#### 攻击演示
+
+```bash
+# 上传 HTML → XSS 攻击（窃取 Cookie）
+echo '<script>alert(document.cookie)</script>' > hack.html
+curl -F "file=@hack.html;filename=hack.html" http://localhost:5000/upload
+# 任何用户访问 /static/uploads/hack.html 就会触发 JS
+
+# 上传 .py 脚本
+curl -F "file=@shell.py;filename=shell.py" http://localhost:5000/upload
+
+# 路径遍历（../../etc 写文件到上级目录）
+curl -F "file=@evil.txt;filename=../../static/evil.txt" http://localhost:5000/upload
+```
+
 ---
 
 ## 🔧 修复方法与结果
@@ -119,6 +140,23 @@ sql = "SELECT * FROM users WHERE username LIKE ?"
 c.execute(sql, (f"%{keyword}%",))
 ```
 
+### 第三轮修复：文件上传
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 11 | 检查文件后缀 + `secure_filename()` 安全命名 | ✅ 仅允许图片上传，路径遍历被拦截 |
+
+```python
+# 修复：只允许图片 + 安全文件名
+ALLOWED = {"png", "jpg", "jpeg", "gif", "webp"}
+if ext not in ALLOWED:
+    return render_template("upload.html", error="只允许上传图片")
+
+from werkzeug.utils import secure_filename
+safe_name = secure_filename(f.filename)
+f.save(os.path.join(upload_dir, safe_name))
+```
+
 ---
 
 ## 📁 项目结构
@@ -132,13 +170,15 @@ user-management/
 ├── data/
 │   └── users.db              # SQLite 数据库
 ├── static/
+│   ├── uploads/              # 上传文件目录
 │   └── css/
 │       └── style.css         # 导航栏、卡片、表单、表格样式
 └── templates/
     ├── base.html             # 基础模板（导航栏 + 布局）
     ├── index.html            # 首页（用户信息 + 搜索）
     ├── login.html            # 登录页
-    └── register.html         # 注册页
+    ├── register.html         # 注册页
+    └── upload.html           # 头像上传页
 ```
 
 ---
@@ -152,6 +192,7 @@ user-management/
 | `/register` | GET/POST | 注册页/提交注册 |
 | `/search` | GET | 搜索用户（参数 `?keyword=xxx`） |
 | `/logout` | GET | 登出并跳转首页 |
+| `/upload` | GET/POST | 用户头像上传（已登录） |
 | `/report` | GET | 下载安全漏洞审计报告 PDF |
 
 ---

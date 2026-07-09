@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24).hex())
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB
 
 # ========== 数据库初始化 ==========
 
@@ -109,7 +110,7 @@ def login():
 
 @app.route("/report")
 def download_report():
-    return send_from_directory(".", "安全漏洞审计报告.pdf", as_attachment=True)
+    return send_from_directory(".", "第3轮_文件上传漏洞审计报告.pdf", as_attachment=True)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -176,7 +177,42 @@ def logout():
     return redirect("/")
 
 
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    if "username" not in session:
+        return redirect("/login")
+
+    if request.method == "POST":
+        f = request.files.get("file")
+        if f is None or f.filename == "":
+            return render_template("upload.html", error="请选择要上传的文件")
+
+        # ===== 修复：只允许图片文件 =====
+        # 1. 检查文件后缀名
+        ALLOWED = {"png", "jpg", "jpeg", "gif", "webp"}
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED:
+            return render_template("upload.html", error=f"只允许上传图片文件，当前类型: .{ext}")
+
+        # 2. 使用安全文件名（移除路径和特殊字符）
+        from werkzeug.utils import secure_filename
+        safe_name = secure_filename(f.filename)
+
+        # 保存文件
+        upload_dir = os.path.join(app.root_path, "static", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        save_path = os.path.join(upload_dir, safe_name)
+        f.save(save_path)
+
+        file_url = f"/static/uploads/{safe_name}"
+        return render_template("upload.html", file_url=file_url, filename=safe_name)
+
+    return render_template("upload.html")
+
+
 if __name__ == "__main__":
     init_db()
+    # 确保上传目录存在
+    os.makedirs(os.path.join(os.path.dirname(__file__), "static", "uploads"), exist_ok=True)
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)

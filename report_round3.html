@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: "第 " counter(page) " 页"; font-size: 10px; color: #888; } }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #222; line-height: 1.7; font-size: 12px; }
+
+  .cover { text-align: center; padding: 120px 0 80px; }
+  .cover h1 { font-size: 26px; color: #1a1a2e; margin-bottom: 12px; letter-spacing: 2px; }
+  .cover .subtitle { font-size: 15px; color: #666; margin-bottom: 6px; }
+  .cover .meta { font-size: 12px; color: #999; margin-top: 30px; line-height: 2; }
+  .cover .divider { width: 60px; height: 3px; background: linear-gradient(90deg, #e74c3c, #c0392b); margin: 20px auto; border-radius: 2px; }
+  .cover .risk-badge { display: inline-block; background: #e74c3c; color: #fff; padding: 6px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-top: 10px; }
+
+  .toc { page-break-before: always; }
+  .toc h2 { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin-bottom: 16px; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 5px 0; font-size: 13px; }
+
+  h2.section { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin: 30px 0 16px; page-break-before: always; }
+  h2.section:first-of-type { page-break-before: avoid; }
+  h3 { font-size: 15px; color: #2c3e50; margin: 20px 0 8px; }
+  p { margin-bottom: 10px; text-align: justify; }
+
+  .vuln-card { border: 1px solid #e0e0e0; border-radius: 8px; margin: 14px 0; padding: 14px 16px; page-break-inside: avoid; }
+  .vuln-card.critical { border-left: 4px solid #e74c3c; }
+  .vuln-card .vuln-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .vuln-card .vuln-title { font-weight: bold; font-size: 13px; }
+  .vuln-card .vuln-severity { font-size: 11px; padding: 2px 10px; border-radius: 3px; font-weight: bold; }
+  .vuln-card .vuln-severity.critical { background: #fdedec; color: #e74c3c; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; page-break-inside: avoid; }
+  th { background: #1a1a2e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+
+  .code-block { background: #1e1e2e; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.5; margin: 8px 0; overflow-x: auto; page-break-inside: avoid; }
+  .code-block .comment { color: #6a9955; }
+  .code-block .keyword { color: #569cd6; }
+  .code-block .danger { color: #f44747; }
+  .code-block .good { color: #4ec9b0; }
+
+  .status-fixed { color: #27ae60; font-weight: bold; }
+  .status-unfixed { color: #e74c3c; font-weight: bold; }
+
+  .diff-box { display: flex; gap: 12px; margin: 8px 0; page-break-inside: avoid; }
+  .diff-box .diff-item { flex: 1; border-radius: 6px; padding: 10px 12px; font-size: 11px; }
+  .diff-box .diff-before { background: #fdedec; border: 1px solid #f5c6cb; }
+  .diff-box .diff-after { background: #e8f8f5; border: 1px solid #a3e4d7; }
+  .diff-box .diff-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+  .diff-box .diff-before .diff-label { color: #e74c3c; }
+  .diff-box .diff-after .diff-label { color: #27ae60; }
+
+  .summary-grid { display: flex; gap: 12px; margin: 14px 0; page-break-inside: avoid; }
+  .summary-box { flex: 1; text-align: center; padding: 14px; border-radius: 8px; }
+  .summary-box.critical { background: #fdedec; border: 1px solid #e74c3c; }
+  .summary-box.fixed { background: #e8f8f5; border: 1px solid #27ae60; }
+  .summary-box .num { font-size: 28px; font-weight: bold; }
+  .summary-box.critical .num { color: #e74c3c; }
+  .summary-box.fixed .num { color: #27ae60; }
+  .summary-box .label { font-size: 11px; color: #666; margin-top: 4px; }
+
+  .attack-box { background: #1a1a2e; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.6; page-break-inside: avoid; }
+  .attack-box .title { color: #ffd700; font-weight: bold; font-size: 12px; font-family: sans-serif; }
+  .attack-box .code { color: #e0e0e0; }
+  .attack-box .result { color: #4ec9b0; }
+  .attack-box .bad { color: #ff6b6b; }
+
+  ul { margin: 6px 0 6px 18px; }
+  li { margin-bottom: 4px; }
+  .footer-note { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="risk-badge">安全漏洞审计报告 · 第3轮</div>
+  <h1>用户信息管理平台<br>文件上传漏洞审计报告</h1>
+  <div class="divider"></div>
+  <p class="subtitle">User Management Platform — File Upload Security Assessment</p>
+  <div class="meta">
+    <p><strong>目标系统：</strong>用户信息管理平台 (Flask)</p>
+    <p><strong>报告日期：</strong>2026-07-09</p>
+    <p><strong>漏洞等级：</strong>严重 × 1</p>
+    <p><strong>修复状态：</strong>✅ 已修复</p>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ul>
+    <li>1. 报告概述</li>
+    <li>2. 漏洞描述</li>
+    <li>3. 攻击演示（3 种攻击）</li>
+    <li>4. 修复方法</li>
+    <li>5. 修复前后对照</li>
+    <li>6. 修复验证</li>
+    <li>7. 全部三轮汇总</li>
+  </ul>
+</div>
+
+<h2 class="section">1. 报告概述</h2>
+
+<h3>1.1 本轮背景</h3>
+<p>
+系统新增了"头像上传"功能，用户可以选择文件上传到 <code>/static/uploads/</code> 目录。
+由于<strong>没有做任何文件类型检查</strong>，且<strong>保留用户原始文件名</strong>，
+导致攻击者可以上传任意类型的恶意文件。
+</p>
+
+<h3>1.2 漏洞根因（一句话）</h3>
+<p style="font-size:14px; font-weight:bold; color:#e74c3c; background:#fdedec; padding:10px 14px; border-radius:6px;">
+app.py 没有检查文件后缀名，也没有使用安全文件名，任何人都可以上传 .html、.py、.exe 等危险文件。
+</p>
+
+<h2 class="section">2. 漏洞描述</h2>
+
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-11：任意文件上传</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>app.py</code> — upload 路由</p>
+  <p><strong>漏洞代码：</strong></p>
+  <div class="code-block">
+<span class="danger">f.save(os.path.join(upload_dir, f.filename))</span>&nbsp;&nbsp;<span class="comment">← 没有检查后缀，没有处理文件名</span>
+  </div>
+  <p><strong>问题：</strong></p>
+  <ul>
+    <li>❌ 没有检查文件后缀（.html、.py 都能上传）</li>
+    <li>❌ 没有使用安全文件名（可能路径遍历）</li>
+    <li>❌ 上传的文件可通过 URL 直接访问</li>
+    <li>❌ 同名文件直接覆盖旧文件</li>
+  </ul>
+</div>
+
+<h2 class="section">3. 攻击演示</h2>
+
+<h3>攻击 1：上传 HTML → XSS 攻击</h3>
+<div class="attack-box">
+  <div class="title">🎯 攻击者上传一个包含 JS 的 HTML 文件</div>
+  <div class="code">echo '&lt;script&gt;alert("你的Cookie:" + document.cookie)&lt;/script&gt;' &gt; hack.html</div>
+  <div class="code">curl -F "file=@hack.html;filename=hack.html" http://localhost:5000/upload</div>
+  <div class="result">✅ 上传成功！文件保存到 /static/uploads/hack.html</div><br>
+  <div class="title">😱 受害者访问这个链接</div>
+  <div class="bad">http://localhost:5000/static/uploads/hack.html</div>
+  <div class="result">→ 浏览器执行 JS 脚本，Cookie 被窃取！</div>
+</div>
+<p><strong>后果：</strong>攻击者可以窃取用户的登录 session，伪造身份登录系统。</p>
+
+<h3>攻击 2：上传 .py 文件</h3>
+<div class="attack-box">
+  <div class="title">🎯 攻击者上传 Python 脚本</div>
+  <div class="code">echo 'print("恶意代码")' &gt; shell.py</div>
+  <div class="code">curl -F "file=@shell.py;filename=shell.py" http://localhost:5000/upload</div>
+  <div class="result">✅ 上传成功！HTTP 200，无任何拦截</div>
+</div>
+<p><strong>后果：</strong>如果服务器配置了解释器，.py 文件可能被远程执行。</p>
+
+<h3>攻击 3：上传 .bat / .exe 等危险文件</h3>
+<div class="attack-box">
+  <div class="title">🎯 攻击者上传病毒文件</div>
+  <div class="code">echo 'del C:\*.*' &gt; virus.bat</div>
+  <div class="code">curl -F "file=@virus.bat;filename=virus.bat" http://localhost:5000/upload</div>
+  <div class="result">✅ 上传成功！.bat .exe .dll 全部放行</div>
+</div>
+<p><strong>后果：</strong>用户下载后运行，可能导致电脑中毒。</p>
+
+<h2 class="section">4. 修复方法</h2>
+
+<p>只需要添加 <strong>3 行代码</strong>：</p>
+
+<h3>4.1 检查文件后缀</h3>
+<div class="code-block">
+<span class="comment"># 只允许这几种图片格式</span>
+ALLOWED = {<span class="string">"png"</span>, <span class="string">"jpg"</span>, <span class="string">"jpeg"</span>, <span class="string">"gif"</span>, <span class="string">"webp"</span>}
+ext = f.filename.rsplit(<span class="string">"."</span>, 1)[-1].lower() <span class="keyword">if</span> <span class="string">"."</span> <span class="keyword">in</span> f.filename <span class="keyword">else</span> <span class="string">""</span>
+<span class="keyword">if</span> ext <span class="keyword">not in</span> ALLOWED:
+    <span class="keyword">return</span> render_template(<span class="string">"upload.html"</span>, error=<span class="string">"只允许上传图片文件"</span>)
+</div>
+
+<h3>4.2 使用安全文件名</h3>
+<div class="code-block">
+<span class="keyword">from</span> werkzeug.utils <span class="keyword">import</span> secure_filename
+safe_name = secure_filename(f.filename)&nbsp;&nbsp;<span class="comment"># 移除路径和特殊字符</span>
+</div>
+
+<p><strong>这两步加在一起，攻击者的 .html、.py、.bat 文件就传不上来了。</strong></p>
+
+<h2 class="section">5. 修复前后对照</h2>
+
+<div class="diff-box">
+  <div class="diff-item diff-before">
+    <div class="diff-label">❌ 修复前</div>
+    f.save(os.path.join(upload_dir, f.filename))<br><br>
+    → 危险文件可上传<br>
+    → 路径遍历可攻击<br>
+    → XSS 攻击可触发
+  </div>
+  <div class="diff-item diff-after">
+    <div class="diff-label">✅ 修复后</div>
+    if ext not in ALLOWED: 拒绝<br>
+    safe_name = secure_filename(f.filename)<br>
+    f.save(os.path.join(upload_dir, safe_name))<br><br>
+    → 仅允许图片上传<br>
+    → 文件名安全无害
+  </div>
+</div>
+
+<h2 class="section">6. 修复验证</h2>
+
+<table>
+  <tr><th style="width:30px;">#</th><th>测试</th><th style="width:100px;">结果</th></tr>
+  <tr><td>1</td><td>上传 .png 图片 → 成功</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>上传 .html 文件 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>上传 .py 文件 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>上传 .bat 文件 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>5</td><td>路径遍历 ../../ → 被 safe_filename 拦截</td><td class="status-fixed">✅ 通过</td></tr>
+</table>
+
+<h2 class="section">7. 全部三轮汇总</h2>
+
+<table>
+  <tr><th>轮次</th><th>审计内容</th><th>漏洞数</th><th>严重</th><th>中危</th><th>状态</th></tr>
+  <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>4</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>0</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>0</td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>11</strong></td><td><strong>7</strong></td><td><strong>4</strong></td><td><strong>全部已修复</strong></td></tr>
+</table>
+
+<h3>三条修复规则（初学者必记）</h3>
+<ul>
+  <li><strong>规则 1：</strong>只允许图片后缀（png/jpg/jpeg/gif/webp）</li>
+  <li><strong>规则 2：</strong>用 <code>secure_filename()</code> 处理文件名</li>
+  <li><strong>规则 3：</strong>永远不要相信用户上传的文件名和后缀</li>
+</ul>
+
+<div class="footer-note">
+  <p>安全漏洞审计报告 · 第3轮 — 文件上传安全 | 报告日期：2026-07-09</p>
+  <p>项目地址：https://github.com/sencly-book/user-management</p>
+</div>
+
+</body>
+</html>
