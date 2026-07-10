@@ -8,6 +8,10 @@
     <div class="error-message">{{ error }}</div>
     {% endif %}
 
+    {% if msg %}
+    <div class="{% if '成功' in msg %}success-message{% else %}error-message{% endif %}">{{ msg }}</div>
+    {% endif %}
+
     {% if user %}
     <ul class="user-info-list">
         <li><span class="info-label">ID：</span>{{ user.id }}</li>

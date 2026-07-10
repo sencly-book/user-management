@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -256,19 +257,24 @@ def upload():
 
 @app.route("/profile", methods=["GET"])
 def profile():
-    user_id = request.args.get("user_id")
+    # 只允许查看自己的个人中心，从 session 获取当前用户
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
 
     conn = sqlite3.connect("data/users.db")
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT id, username, email, phone, balance FROM users WHERE id = ?", (user_id,))
+    c.execute("SELECT id, username, email, phone, balance FROM users WHERE username = ?", (username,))
     row = c.fetchone()
     conn.close()
 
     if row is None:
         return render_template("profile.html", error="用户不存在", user=None)
 
-    return render_template("profile.html", user=dict(row), error=None)
+    # 获取充值结果提示信息（从 recharge 重定向带过来的）
+    msg = request.args.get("msg", "")
+    return render_template("profile.html", user=dict(row), error=None, msg=msg)
 
 
 @app.route("/recharge", methods=["POST"])
@@ -283,11 +289,11 @@ def recharge():
     try:
         amount_num = float(amount)
     except ValueError:
-        return redirect(f"/profile?user_id={user_id}")
+        return redirect("/profile?msg=" + quote("充值失败，金额格式不正确"))
 
     # 修复2：单次充值金额限制在 ±10000
     if abs(amount_num) > 10000:
-        return redirect(f"/profile?user_id={user_id}")
+        return redirect("/profile?msg=" + quote("充值失败，单次金额不能超过10000"))
 
     conn = sqlite3.connect("data/users.db")
     c = conn.cursor()
@@ -296,19 +302,19 @@ def recharge():
     row = c.fetchone()
     if row is None:
         conn.close()
-        return redirect("/profile?user_id=" + user_id)
+        return redirect("/profile?msg=" + quote("充值失败，用户不存在"))
 
     current_balance = row[0]
     new_balance = current_balance + amount_num
     if new_balance < 0:
         conn.close()
-        return redirect(f"/profile?user_id={user_id}")
+        return redirect("/profile?msg=" + quote("充值失败，余额不能为负数"))
 
     c.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
     conn.commit()
     conn.close()
 
-    return redirect(f"/profile?user_id={user_id}")
+    return redirect("/profile?msg=" + quote(f"充值成功，当前余额: {new_balance}"))
 
 
 if __name__ == "__main__":
