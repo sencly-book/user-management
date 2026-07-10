@@ -104,7 +104,7 @@ curl -F "file=@shell.py;filename=shell.py" http://localhost:5000/upload
 curl -F "file=@evil.txt;filename=../../static/evil.txt" http://localhost:5000/upload
 ```
 
-### 第四轮：业务逻辑漏洞（5 项）
+### 第四轮：业务逻辑漏洞（7 项）
 
 | # | 漏洞 | 严重程度 | 描述 |
 |:-:|:----|:-------:|:----|
@@ -113,6 +113,8 @@ curl -F "file=@evil.txt;filename=../../static/evil.txt" http://localhost:5000/up
 | 14 | **未登录也可充值** | 🟠 高危 | 无需身份认证即可修改任意用户的余额 |
 | 15 | **注册错误信息泄露** | 🟡 中危 | 重复注册暴露 `UNIQUE constraint` 底层错误 |
 | 16 | **搜索未登录泄露用户数据** | 🟡 中危 | 无需登录即可搜索到所有用户的邮箱和手机 |
+| 17 | **越权访问个人中心** | 🔴 严重 | 修改 URL 参数 `?user_id=2` 即可查看他人资料 |
+| 18 | **充值操作无反馈提示** | 🟡 中危 | 充值失败或成功时没有任何提示信息 |
 
 #### 攻击演示
 
@@ -128,6 +130,9 @@ curl -X POST http://localhost:5000/recharge -d "user_id=2&amount=99999"
 
 # 注册探测用户名是否存在
 curl -X POST http://localhost:5000/register -d "username=admin&password=x&email=x&phone=x"
+
+# 越权查看他人资料
+curl http://localhost:5000/profile?user_id=2
 ```
 
 ---
@@ -192,18 +197,17 @@ f.save(os.path.join(upload_dir, safe_name))
 | 14 | 充值必须登录 | ✅ 未登录无法修改余额 |
 | 15 | 通用错误提示，不暴露 SQLite 细节 | ✅ 无法探测用户名是否存在 |
 | 16 | 搜索保持开放（设计如此） | ✅ 正常使用 |
+| 17 | **profile从session获取用户，忽略URL参数** | ✅ 无法越权查看他人资料 |
+| 18 | **充值成功/失败时通过URL参数返回明确提示** | ✅ 用户能清楚知道操作结果 |
 
 ```python
-# 修复：充值路由的三层防护
-def recharge():
-    if "username" not in session:       # 第1层：必须登录
-        return redirect("/login")
-    
-    if abs(amount) > 10000:              # 第2层：金额上限
-        return redirect(...)
-    
-    if new_balance < 0:                   # 第3层：余额非负
-        return redirect(...)
+# 修复：profile 路由 — 只查当前登录用户
+def profile():
+    username = session.get("username")   # 从 session 获取，不读 URL
+    c.execute("SELECT ... WHERE username = ?", (username,))
+
+# 修复：充值提示（URL编码中文消息）
+return redirect("/profile?msg=" + quote("充值成功，当前余额: 500.0"))
 ```
 
 ---
@@ -241,7 +245,7 @@ user-management/
 | `/login` | GET/POST | 登录 | 否 |
 | `/register` | GET/POST | 注册新用户 | 否 |
 | `/search` | GET | 搜索用户（`?keyword=xxx`） | 否 |
-| `/profile` | GET | 个人中心（`?user_id=1`，不传自动查当前用户） | 是 |
+| `/profile` | GET | 个人中心（从session获取用户，不接受URL参数） | 是 |
 | `/recharge` | POST | 充值（`user_id` + `amount`，可正可负） | 是 |
 | `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
 | `/logout` | GET | 登出并跳转首页 | 是 |
@@ -261,20 +265,24 @@ curl -X POST http://localhost:5000/register -d "username=test&password=123&email
 # 3. 测试搜索
 curl -s "http://localhost:5000/search?keyword=admin"
 
-# 4. 测试个人中心（查看 user_id=2 即 alice 的资料）
-curl -s "http://localhost:5000/profile?user_id=2"
+# 4. 测试个人中心（不传URL参数，自动查当前用户）
+curl -s -b cookies.txt -c cookies.txt -X POST http://localhost:5000/login -d "username=admin&password=admin123"
+curl -s -b cookies.txt http://localhost:5000/profile
 
-# 5. 测试充值（给 admin 充 500）
-curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=500"
+# 5. 测试越权拦截（?user_id=2 仍然显示自己的资料）
+curl -s -b cookies.txt http://localhost:5000/profile?user_id=2
 
-# 6. 测试充负值扣钱
-curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=-200"
+# 6. 测试充值超过10000（被拒绝且有提示）
+curl -s -L -b cookies.txt -X POST http://localhost:5000/recharge -d "user_id=1&amount=99999"
 
-# 7. 测试登录限流（连续 5 次错误密码被封 5 分钟）
+# 7. 测试正常充值500（成功且有提示）
+curl -s -L -b cookies.txt -X POST http://localhost:5000/recharge -d "user_id=1&amount=500"
+
+# 8. 测试登录限流（连续 5 次错误密码被封 5 分钟）
 for i in $(seq 1 5); do
   curl -X POST http://localhost:5000/login -d "username=admin&password=wrong$i"
 done
 
-# 8. 测试 SQL 注入已被拦截
+# 9. 测试 SQL 注入已被拦截
 curl -s "http://localhost:5000/search?keyword=%27%20OR%20%271%27%3D%271"
 ```

@@ -90,7 +90,7 @@
   <div class="meta">
     <p><strong>目标系统：</strong>用户信息管理平台 (Flask + SQLite)</p>
     <p><strong>报告日期：</strong>2026-07-10</p>
-    <p><strong>漏洞等级：</strong>严重 × 1 &nbsp;|&nbsp; 高危 × 2 &nbsp;|&nbsp; 中危 × 2</p>
+    <p><strong>漏洞等级：</strong>严重 × 2 &nbsp;|&nbsp; 高危 × 2 &nbsp;|&nbsp; 中危 × 3</p>
     <p><strong>修复状态：</strong>✅ 全部已修复</p>
   </div>
 </div>
@@ -99,8 +99,7 @@
   <h2>目录</h2>
   <ul>
     <li>1. 报告概述</li>
-    <li>2. 漏洞详情 — 5 项业务逻辑漏洞</li>
-    <li>3. 攻击演示</li>
+    <li>2. 漏洞详情 — 7 项业务逻辑漏洞</li>    <li>3. 攻击演示</li>
     <li>4. 修复方案</li>
     <li>5. 修复前后对照</li>
     <li>6. 修复验证</li>
@@ -124,10 +123,10 @@
 <h2 class="section">2. 漏洞详情</h2>
 
 <div class="summary-grid">
-  <div class="summary-box critical"><div class="num">1</div><div class="label">🔴 严重</div></div>
+  <div class="summary-box critical"><div class="num">2</div><div class="label">🔴 严重</div></div>
   <div class="summary-box high"><div class="num">2</div><div class="label">🟠 高危</div></div>
-  <div class="summary-box medium"><div class="num">2</div><div class="label">🟡 中危</div></div>
-  <div class="summary-box fixed"><div class="num">5/5</div><div class="label">✅ 已修复</div></div>
+  <div class="summary-box medium"><div class="num">3</div><div class="label">🟡 中危</div></div>
+  <div class="summary-box fixed"><div class="num">7/7</div><div class="label">✅ 已修复</div></div>
 </div>
 
 <div class="vuln-card critical">
@@ -180,6 +179,26 @@
   <p><strong>攻击场景：</strong><code>/search?keyword=a</code> → 返回所有用户名中包含 a 的用户的完整资料。</p>
 </div>
 
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-17：越权访问个人中心</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>/profile</code> — GET 路由</p>
+  <p><strong>描述：</strong>profile 接口从 URL 参数 <code>user_id</code> 获取用户 ID，攻击者只需修改 URL 中的数字即可查看任意用户的邮箱、手机、余额等敏感信息，无需任何权限校验。</p>
+  <p><strong>攻击场景：</strong><code>/profile?user_id=2</code> → 直接查看 alice 的全部个人资料。</p>
+</div>
+
+<div class="vuln-card medium">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-18：充值操作无反馈提示</span>
+    <span class="vuln-severity medium">🟡 中危</span>
+  </div>
+  <p><strong>位置：</strong><code>/recharge</code> — POST 路由</p>
+  <p><strong>描述：</strong>充值无论是成功还是失败，都只默默重定向回个人中心页面，没有任何成功或失败提示。用户无法判断操作是否成功，也不知道失败原因。</p>
+  <p><strong>攻击场景：</strong>充值超过上限 → 跳转回个人中心 → 余额不变 → 用户不知道为什么。</p>
+</div>
+
 <h2 class="section">3. 攻击演示</h2>
 
 <h3>3.1 充值天文数字</h3>
@@ -219,6 +238,23 @@ curl -X POST http://localhost:5000/recharge \<br>
 <span class="bad">返回: UNIQUE constraint failed: users.username<br>攻击者确认 "admin" 已注册</span>
 </div>
 
+<h3>3.5 越权访问他人资料</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">curl http://localhost:5000/profile?user_id=2</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">无需登录即可看到 alice 的邮箱、手机、余额</span>
+</div>
+
+<h3>3.6 充值无提示</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">curl -X POST http://localhost:5000/recharge \<br>
+&nbsp;&nbsp;-d "user_id=1&amp;amount=99999"</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">只跳转回 /profile，没有任何成功或失败提示信息</span>
+</div>
+
 <h2 class="section">4. 修复方案</h2>
 
 <h3>4.1 VULN-12：充值金额上限</h3>
@@ -246,6 +282,25 @@ new_balance = current_balance + amount_num<br>
 <span class="danger">return render_template("register.html", error=f"注册失败: {e}")</span><br><br>
 <span class="comment"># 修复后：通用提示</span><br>
 <span class="good">return render_template("register.html", error="注册失败，用户名可能已被占用")</span>
+</div>
+
+<h3>4.5 VULN-17：修复越权访问（profile从session获取用户）</h3>
+<div class="code-block">
+<span class="comment"># 修复前：从 URL 参数获取 user_id（可越权）</span><br>
+<span class="danger">user_id = request.args.get("user_id")</span><br>
+<span class="danger">c.execute("SELECT ... WHERE id = ?", (user_id,))</span><br><br>
+<span class="comment"># 修复后：从 session 获取当前用户（不可越权）</span><br>
+<span class="good">username = session.get("username")</span><br>
+<span class="good">c.execute("SELECT ... WHERE username = ?", (username,))</span>
+</div>
+
+<h3>4.6 VULN-18：充值反馈提示</h3>
+<div class="code-block">
+<span class="comment"># 修复前：静默跳转，无任何提示</span><br>
+<span class="danger">return redirect(f"/profile?user_id={user_id}")</span><br><br>
+<span class="comment"># 修复后：URL参数携带中文提示信息（需URL编码）</span><br>
+<span class="good">return redirect("/profile?msg=" + quote("充值成功，当前余额: 500.0"))</span><br>
+<span class="good">return redirect("/profile?msg=" + quote("充值失败，单次金额不能超过10000"))</span>
 </div>
 
 <h2 class="section">5. 修复前后对照</h2>
@@ -293,20 +348,22 @@ new_balance = current_balance + amount_num<br>
   <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>-</td><td>4</td><td class="status-fixed">✅</td></tr>
   <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
   <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
-  <tr><td>第 4 轮</td><td>业务逻辑</td><td>5</td><td>1</td><td>2</td><td>2</td><td class="status-fixed">✅</td></tr>
-  <tr><td><strong>合计</strong></td><td></td><td><strong>16</strong></td><td><strong>8</strong></td><td><strong>2</strong></td><td><strong>6</strong></td><td><strong>全部已修复</strong></td></tr>
+  <tr><td><tr><td>第 4 轮</td><td>业务逻辑</td><td>7</td><td>2</td><td>2</td><td>3</td></td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>18</strong></td><td><strong>9</strong></td><td><strong>2</strong></td><td><strong>7</strong></td><td><strong>全部已修复</strong></td></tr>
 </table>
 
 <h3>本轮总结</h3>
 <p>
 业务逻辑漏洞是最容易被忽视的安全问题。代码没有语法错误，SQL 也没有注入风险，
 但<strong>缺少业务规则校验</strong>导致用户可以做不合理的事。
-修复的核心是 <strong>3 条规则</strong>：
+修复的核心是 <strong>5 条规则</strong>：
 </p>
 <ul>
   <li><strong>💰 金额控制：</strong>单次充值上限 ±10000，余额不能为负</li>
   <li><strong>🔐 操作鉴权：</strong>修改余额必须登录</li>
   <li><strong>🎯 信息最小化：</strong>错误提示不暴露数据库内部信息</li>
+  <li><strong>🛡️ 对象级权限：</strong>个人中心从 session 获取用户，不接受 URL 参数</li>
+  <li><strong>📢 操作反馈：</strong>所有操作必须返回明确的成功/失败提示</li>
 </ul>
 
 <div class="footer-note">
