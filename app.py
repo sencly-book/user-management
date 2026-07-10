@@ -29,6 +29,15 @@ def init_db():
     conn.close()
     print("[DB] 数据库初始化完成")
 
+    # 确保数据库表有 balance 字段（兼容旧数据库）
+    try:
+        conn2 = sqlite3.connect("data/users.db")
+        conn2.execute("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0")
+        conn2.commit()
+        conn2.close()
+    except Exception:
+        pass  # 字段已存在，忽略
+
 USERS = {
     "admin": {
         "username": "admin",
@@ -77,7 +86,19 @@ def index():
     username = session.get("username")
     user_info = None
     if username and username in USERS:
-        user_info = USERS[username]
+        user_info = dict(USERS[username])  # 复制一份，避免修改原字典
+        # 从数据库获取实时余额（充值后同步）
+        try:
+            conn = sqlite3.connect("data/users.db")
+            c = conn.cursor()
+            c.execute("SELECT balance, id FROM users WHERE username = ?", (username,))
+            row = c.fetchone()
+            conn.close()
+            if row:
+                user_info["balance"] = row[0]
+                user_info["id"] = row[1]
+        except Exception:
+            pass  # 数据库出错时使用内存中的默认值
     return render_template("index.html", user=user_info, search_results=None, keyword="")
 
 
@@ -98,7 +119,19 @@ def login():
             # 登录成功，清除该 IP 的失败记录
             if client_ip in LOGIN_FAILURES:
                 del LOGIN_FAILURES[client_ip]
-            user_info = USERS[username]
+            user_info = dict(USERS[username])
+            # 从数据库获取实时余额和 ID
+            try:
+                conn2 = sqlite3.connect("data/users.db")
+                c2 = conn2.cursor()
+                c2.execute("SELECT balance, id FROM users WHERE username = ?", (username,))
+                row = c2.fetchone()
+                conn2.close()
+                if row:
+                    user_info["balance"] = row[0]
+                    user_info["id"] = row[1]
+            except Exception:
+                pass
             return render_template("index.html", user=user_info)
 
         record_failure(client_ip)
@@ -167,7 +200,18 @@ def search():
     username = session.get("username")
     user_info = None
     if username and username in USERS:
-        user_info = USERS[username]
+        user_info = dict(USERS[username])
+        try:
+            conn2 = sqlite3.connect("data/users.db")
+            c2 = conn2.cursor()
+            c2.execute("SELECT balance, id FROM users WHERE username = ?", (username,))
+            row = c2.fetchone()
+            conn2.close()
+            if row:
+                user_info["balance"] = row[0]
+                user_info["id"] = row[1]
+        except Exception:
+            pass
     return render_template("index.html", user=user_info, search_results=results, keyword=keyword)
 
 
@@ -208,6 +252,53 @@ def upload():
         return render_template("upload.html", file_url=file_url, filename=safe_name)
 
     return render_template("upload.html")
+
+
+@app.route("/profile", methods=["GET"])
+def profile():
+    # 优先从 URL 参数获取 user_id
+    user_id = request.args.get("user_id")
+
+    # 没有传 user_id 时，从 session 获取当前登录用户的 ID
+    if not user_id:
+        username = session.get("username")
+        if not username:
+            return redirect("/login")
+        # 从数据库查当前用户的 ID
+        conn = sqlite3.connect("data/users.db")
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE username = ?", (username,))
+        row = c.fetchone()
+        conn.close()
+        if row is None:
+            return redirect("/login")
+        user_id = str(row[0])
+
+    conn = sqlite3.connect("data/users.db")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT id, username, email, phone, balance FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+
+    if row is None:
+        return render_template("profile.html", error="用户不存在", user=None)
+
+    return render_template("profile.html", user=dict(row), error=None)
+
+
+@app.route("/recharge", methods=["POST"])
+def recharge():
+    user_id = request.form.get("user_id")
+    amount = request.form.get("amount", "0")
+
+    conn = sqlite3.connect("data/users.db")
+    c = conn.cursor()
+    c.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/profile?user_id={user_id}")
 
 
 if __name__ == "__main__":

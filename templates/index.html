@@ -12,6 +12,7 @@
         <li><span class="info-label">角色：</span>{{ user.role }}</li>
         <li><span class="info-label">余额：</span>{{ user.balance }}</li>
     </ul>
+    <a href="/profile?user_id=1" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">个人中心</a>
     <a href="/upload" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">上传头像</a>
     <a href="/logout" class="btn btn-danger" style="display: inline-block;">退出登录</a>
     {% else %}

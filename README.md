@@ -163,49 +163,69 @@ f.save(os.path.join(upload_dir, safe_name))
 
 ```
 user-management/
-├── app.py                    # Flask 主应用
+├── app.py                    # Flask 主应用（全部功能）
 ├── .gitignore                # Git 忽略规则
 ├── CHANGELOG_SECURITY.md     # 安全修复日志
 ├── README.md                 # 本文件
 ├── data/
-│   └── users.db              # SQLite 数据库
+│   └── users.db              # SQLite 数据库（用户表含余额）
 ├── static/
-│   ├── uploads/              # 上传文件目录
+│   ├── uploads/              # 头像/文件上传目录
 │   └── css/
-│       └── style.css         # 导航栏、卡片、表单、表格样式
+│       └── style.css         # 全部样式
 └── templates/
-    ├── base.html             # 基础模板（导航栏 + 布局）
+    ├── base.html             # 基础模板（导航栏）
     ├── index.html            # 首页（用户信息 + 搜索）
     ├── login.html            # 登录页
     ├── register.html         # 注册页
-    └── upload.html           # 头像上传页
+    ├── upload.html           # 头像上传页
+    └── profile.html          # 个人中心（资料 + 充值）
 ```
 
 ---
 
 ## 📄 路由说明
 
-| 路由 | 方法 | 说明 |
-|:----|:----|:----|
-| `/` | GET | 首页，已登录显示用户信息 + 搜索框 |
-| `/login` | GET/POST | 登录页/提交登录 |
-| `/register` | GET/POST | 注册页/提交注册 |
-| `/search` | GET | 搜索用户（参数 `?keyword=xxx`） |
-| `/logout` | GET | 登出并跳转首页 |
-| `/upload` | GET/POST | 用户头像上传（已登录） |
-| `/report` | GET | 下载安全漏洞审计报告 PDF |
+| 路由 | 方法 | 说明 | 登录要求 |
+|:----|:----|:----|:--------:|
+| `/` | GET | 首页（用户信息 + 搜索框） | 否 |
+| `/login` | GET/POST | 登录 | 否 |
+| `/register` | GET/POST | 注册新用户 | 否 |
+| `/search` | GET | 搜索用户（`?keyword=xxx`） | 否 |
+| `/profile` | GET | 个人中心（`?user_id=1`，不传自动查当前用户） | 是 |
+| `/recharge` | POST | 充值（`user_id` + `amount`，可正可负） | 是 |
+| `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
+| `/logout` | GET | 登出并跳转首页 | 是 |
+| `/report` | GET | 下载最新安全审计报告 PDF | 否 |
 
 ---
 
 ## 🧪 测试
 
 ```bash
-# 测试限流（连续 5 次错误密码）
+# 1. 测试登录
+curl -X POST http://localhost:5000/login -d "username=admin&password=admin123"
+
+# 2. 测试注册
+curl -X POST http://localhost:5000/register -d "username=test&password=123&email=test@test.com&phone=10086"
+
+# 3. 测试搜索
+curl -s "http://localhost:5000/search?keyword=admin"
+
+# 4. 测试个人中心（查看 user_id=2 即 alice 的资料）
+curl -s "http://localhost:5000/profile?user_id=2"
+
+# 5. 测试充值（给 admin 充 500）
+curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=500"
+
+# 6. 测试充负值扣钱
+curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=-200"
+
+# 7. 测试登录限流（连续 5 次错误密码被封 5 分钟）
 for i in $(seq 1 5); do
   curl -X POST http://localhost:5000/login -d "username=admin&password=wrong$i"
 done
 
-# 测试 SQL 注入已被拦截
+# 8. 测试 SQL 注入已被拦截
 curl -s "http://localhost:5000/search?keyword=%27%20OR%20%271%27%3D%271"
-# 返回"无搜索结果"，而不是全部用户
 ```

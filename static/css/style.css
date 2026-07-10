@@ -301,3 +301,18 @@ body {
     color: #667eea;
     text-decoration: none;
 }
+
+/* 充值区域 */
+.recharge-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.recharge-form {
+    margin-top: 12px;
+}
+
+.recharge-form .btn-primary {
+    margin-top: 0;
+}

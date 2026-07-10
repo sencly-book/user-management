@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}个人中心 - 用户管理系统{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>个人中心</h2>
+
+    {% if error %}
+    <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    {% if user %}
+    <ul class="user-info-list">
+        <li><span class="info-label">ID：</span>{{ user.id }}</li>
+        <li><span class="info-label">用户名：</span>{{ user.username }}</li>
+        <li><span class="info-label">邮箱：</span>{{ user.email }}</li>
+        <li><span class="info-label">手机：</span>{{ user.phone }}</li>
+        <li><span class="info-label">余额：</span>{{ user.balance }}</li>
+    </ul>
+
+    <div class="recharge-section">
+        <h3>充值</h3>
+        <form method="post" action="/recharge" class="recharge-form">
+            <input type="hidden" name="user_id" value="{{ user.id }}">
+            <div class="form-group">
+                <label for="amount">充值金额</label>
+                <input type="number" id="amount" name="amount" class="form-input" step="any" placeholder="请输入金额" required>
+            </div>
+            <button type="submit" class="btn btn-primary">充值</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
