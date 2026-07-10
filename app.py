@@ -143,7 +143,7 @@ def login():
 
 @app.route("/report")
 def download_report():
-    return send_from_directory(".", "第3轮_文件上传漏洞审计报告.pdf", as_attachment=True)
+    return send_from_directory(".", "第4轮_业务逻辑漏洞审计报告.pdf", as_attachment=True)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -165,7 +165,7 @@ def register():
             return redirect("/login?msg=注册成功，请登录")
         except Exception as e:
             conn.rollback()
-            return render_template("register.html", error=f"注册失败: {e}")
+            return render_template("register.html", error="注册失败，用户名可能已被占用")
         finally:
             conn.close()
 
@@ -256,23 +256,7 @@ def upload():
 
 @app.route("/profile", methods=["GET"])
 def profile():
-    # 优先从 URL 参数获取 user_id
     user_id = request.args.get("user_id")
-
-    # 没有传 user_id 时，从 session 获取当前登录用户的 ID
-    if not user_id:
-        username = session.get("username")
-        if not username:
-            return redirect("/login")
-        # 从数据库查当前用户的 ID
-        conn = sqlite3.connect("data/users.db")
-        c = conn.cursor()
-        c.execute("SELECT id FROM users WHERE username = ?", (username,))
-        row = c.fetchone()
-        conn.close()
-        if row is None:
-            return redirect("/login")
-        user_id = str(row[0])
 
     conn = sqlite3.connect("data/users.db")
     conn.row_factory = sqlite3.Row
@@ -289,12 +273,38 @@ def profile():
 
 @app.route("/recharge", methods=["POST"])
 def recharge():
+    # 修复1：必须登录才能充值
+    if "username" not in session:
+        return redirect("/login")
+
     user_id = request.form.get("user_id")
     amount = request.form.get("amount", "0")
 
+    try:
+        amount_num = float(amount)
+    except ValueError:
+        return redirect(f"/profile?user_id={user_id}")
+
+    # 修复2：单次充值金额限制在 ±10000
+    if abs(amount_num) > 10000:
+        return redirect(f"/profile?user_id={user_id}")
+
     conn = sqlite3.connect("data/users.db")
     c = conn.cursor()
-    c.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+    # 修复3：余额不低于 0
+    c.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    if row is None:
+        conn.close()
+        return redirect("/profile?user_id=" + user_id)
+
+    current_balance = row[0]
+    new_balance = current_balance + amount_num
+    if new_balance < 0:
+        conn.close()
+        return redirect(f"/profile?user_id={user_id}")
+
+    c.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
     conn.commit()
     conn.close()
 

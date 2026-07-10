@@ -104,6 +104,32 @@ curl -F "file=@shell.py;filename=shell.py" http://localhost:5000/upload
 curl -F "file=@evil.txt;filename=../../static/evil.txt" http://localhost:5000/upload
 ```
 
+### 第四轮：业务逻辑漏洞（5 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 12 | **充值无金额上限** | 🔴 严重 | 可充值 9999999999999 使余额变成天文数字 |
+| 13 | **充值可导致余额负数** | 🟠 高危 | 充负值大于余额 → 余额为负，系统负债 |
+| 14 | **未登录也可充值** | 🟠 高危 | 无需身份认证即可修改任意用户的余额 |
+| 15 | **注册错误信息泄露** | 🟡 中危 | 重复注册暴露 `UNIQUE constraint` 底层错误 |
+| 16 | **搜索未登录泄露用户数据** | 🟡 中危 | 无需登录即可搜索到所有用户的邮箱和手机 |
+
+#### 攻击演示
+
+```bash
+# 充值天文数字
+curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=9999999999999"
+
+# 充负值让余额变负数
+curl -X POST http://localhost:5000/recharge -d "user_id=1&amount=-99999999999999"
+
+# 未登录越权充值（无需 Cookie）
+curl -X POST http://localhost:5000/recharge -d "user_id=2&amount=99999"
+
+# 注册探测用户名是否存在
+curl -X POST http://localhost:5000/register -d "username=admin&password=x&email=x&phone=x"
+```
+
 ---
 
 ## 🔧 修复方法与结果
@@ -155,6 +181,29 @@ if ext not in ALLOWED:
 from werkzeug.utils import secure_filename
 safe_name = secure_filename(f.filename)
 f.save(os.path.join(upload_dir, safe_name))
+```
+
+### 第四轮修复：业务逻辑
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 12 | 单次充值上限 ±10000 | ✅ 无法充天文数字 |
+| 13 | 余额不能低于 0 | ✅ 无法制造负数余额 |
+| 14 | 充值必须登录 | ✅ 未登录无法修改余额 |
+| 15 | 通用错误提示，不暴露 SQLite 细节 | ✅ 无法探测用户名是否存在 |
+| 16 | 搜索保持开放（设计如此） | ✅ 正常使用 |
+
+```python
+# 修复：充值路由的三层防护
+def recharge():
+    if "username" not in session:       # 第1层：必须登录
+        return redirect("/login")
+    
+    if abs(amount) > 10000:              # 第2层：金额上限
+        return redirect(...)
+    
+    if new_balance < 0:                   # 第3层：余额非负
+        return redirect(...)
 ```
 
 ---

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: "第 " counter(page) " 页"; font-size: 10px; color: #888; } }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #222; line-height: 1.7; font-size: 12px; }
+
+  .cover { text-align: center; padding: 120px 0 80px; }
+  .cover h1 { font-size: 26px; color: #1a1a2e; margin-bottom: 12px; letter-spacing: 2px; }
+  .cover .subtitle { font-size: 15px; color: #666; margin-bottom: 6px; }
+  .cover .meta { font-size: 12px; color: #999; margin-top: 30px; line-height: 2; }
+  .cover .divider { width: 60px; height: 3px; background: linear-gradient(90deg, #e74c3c, #c0392b); margin: 20px auto; border-radius: 2px; }
+  .cover .risk-badge { display: inline-block; background: #e74c3c; color: #fff; padding: 6px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-top: 10px; }
+
+  .toc { page-break-before: always; }
+  .toc h2 { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin-bottom: 16px; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 5px 0; font-size: 13px; }
+
+  h2.section { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin: 30px 0 16px; page-break-before: always; }
+  h2.section:first-of-type { page-break-before: avoid; }
+  h3 { font-size: 15px; color: #2c3e50; margin: 20px 0 8px; }
+  p { margin-bottom: 10px; text-align: justify; }
+
+  .vuln-card { border: 1px solid #e0e0e0; border-radius: 8px; margin: 14px 0; padding: 14px 16px; page-break-inside: avoid; }
+  .vuln-card.critical { border-left: 4px solid #e74c3c; }
+  .vuln-card.high { border-left: 4px solid #e67e22; }
+  .vuln-card.medium { border-left: 4px solid #f39c12; }
+  .vuln-card .vuln-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .vuln-card .vuln-title { font-weight: bold; font-size: 13px; }
+  .vuln-card .vuln-severity { font-size: 11px; padding: 2px 10px; border-radius: 3px; font-weight: bold; }
+  .vuln-card .vuln-severity.critical { background: #fdedec; color: #e74c3c; }
+  .vuln-card .vuln-severity.high { background: #fdf2e9; color: #e67e22; }
+  .vuln-card .vuln-severity.medium { background: #fef9e7; color: #f39c12; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; page-break-inside: avoid; }
+  th { background: #1a1a2e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+
+  .code-block { background: #1e1e2e; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.5; margin: 8px 0; overflow-x: auto; page-break-inside: avoid; }
+  .code-block .comment { color: #6a9955; }
+  .code-block .keyword { color: #569cd6; }
+  .code-block .danger { color: #f44747; }
+  .code-block .good { color: #4ec9b0; }
+
+  .status-fixed { color: #27ae60; font-weight: bold; }
+
+  .diff-box { display: flex; gap: 12px; margin: 8px 0; page-break-inside: avoid; }
+  .diff-box .diff-item { flex: 1; border-radius: 6px; padding: 10px 12px; font-size: 11px; }
+  .diff-box .diff-before { background: #fdedec; border: 1px solid #f5c6cb; }
+  .diff-box .diff-after { background: #e8f8f5; border: 1px solid #a3e4d7; }
+  .diff-box .diff-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+  .diff-box .diff-before .diff-label { color: #e74c3c; }
+  .diff-box .diff-after .diff-label { color: #27ae60; }
+
+  .summary-grid { display: flex; gap: 12px; margin: 14px 0; page-break-inside: avoid; }
+  .summary-box { flex: 1; text-align: center; padding: 14px; border-radius: 8px; }
+  .summary-box.critical { background: #fdedec; border: 1px solid #e74c3c; }
+  .summary-box.high { background: #fdf2e9; border: 1px solid #e67e22; }
+  .summary-box.medium { background: #fef9e7; border: 1px solid #f39c12; }
+  .summary-box.fixed { background: #e8f8f5; border: 1px solid #27ae60; }
+  .summary-box .num { font-size: 28px; font-weight: bold; }
+  .summary-box.critical .num { color: #e74c3c; }
+  .summary-box.high .num { color: #e67e22; }
+  .summary-box.medium .num { color: #f39c12; }
+  .summary-box.fixed .num { color: #27ae60; }
+  .summary-box .label { font-size: 11px; color: #666; margin-top: 4px; }
+
+  .attack-box { background: #1a1a2e; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.6; page-break-inside: avoid; }
+  .attack-box .title { color: #ffd700; font-weight: bold; font-size: 12px; font-family: sans-serif; }
+  .attack-box .code { color: #e0e0e0; }
+  .attack-box .bad { color: #ff6b6b; }
+  .attack-box .good { color: #4ec9b0; }
+
+  ul { margin: 6px 0 6px 18px; }
+  li { margin-bottom: 4px; }
+  .footer-note { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="risk-badge">安全漏洞审计报告 · 第4轮</div>
+  <h1>用户信息管理平台<br>业务逻辑漏洞审计报告</h1>
+  <div class="divider"></div>
+  <p class="subtitle">User Management Platform — Business Logic Vulnerability Assessment</p>
+  <div class="meta">
+    <p><strong>目标系统：</strong>用户信息管理平台 (Flask + SQLite)</p>
+    <p><strong>报告日期：</strong>2026-07-10</p>
+    <p><strong>漏洞等级：</strong>严重 × 1 &nbsp;|&nbsp; 高危 × 2 &nbsp;|&nbsp; 中危 × 2</p>
+    <p><strong>修复状态：</strong>✅ 全部已修复</p>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ul>
+    <li>1. 报告概述</li>
+    <li>2. 漏洞详情 — 5 项业务逻辑漏洞</li>
+    <li>3. 攻击演示</li>
+    <li>4. 修复方案</li>
+    <li>5. 修复前后对照</li>
+    <li>6. 修复验证</li>
+    <li>7. 全部四轮汇总</li>
+  </ul>
+</div>
+
+<h2 class="section">1. 报告概述</h2>
+
+<h3>1.1 本轮背景</h3>
+<p>
+前三轮修复了密码安全、SQL 注入、文件上传漏洞后，系统新增了<strong>个人中心（/profile）</strong>和<strong>充值（/recharge）</strong>功能。但充值功能存在多处<strong>业务逻辑漏洞</strong>——代码在语法上没有错误，但业务规则出现严重缺陷，导致攻击者可以恶意篡改余额。
+</p>
+
+<h3>1.2 什么是业务逻辑漏洞？</h3>
+<p style="background:#fef9e7;padding:10px 14px;border-radius:6px;border-left:4px solid #f39c12;">
+<b>业务逻辑漏洞 ≠ 代码语法错误。</b>代码能正常运行，但业务规则设计不合理，
+导致用户可以做"系统不该允许"的操作，例如：给自己充任意多的钱、把余额改成负数、不登录就改别人余额。
+</p>
+
+<h2 class="section">2. 漏洞详情</h2>
+
+<div class="summary-grid">
+  <div class="summary-box critical"><div class="num">1</div><div class="label">🔴 严重</div></div>
+  <div class="summary-box high"><div class="num">2</div><div class="label">🟠 高危</div></div>
+  <div class="summary-box medium"><div class="num">2</div><div class="label">🟡 中危</div></div>
+  <div class="summary-box fixed"><div class="num">5/5</div><div class="label">✅ 已修复</div></div>
+</div>
+
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-12：充值无金额上限</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>/recharge</code> — POST 路由</p>
+  <p><strong>描述：</strong>amount 参数没有上限限制，攻击者可一次充值 <code>9999999999999</code> 让余额变成天文数字，完全破坏系统经济平衡。</p>
+  <p><strong>攻击场景：</strong>普通用户给自己充 9999999999999 元 → 余额变成 1 后面 13 个 0 → 账户余额失控。</p>
+</div>
+
+<div class="vuln-card high">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-13：充值可导致余额负数</span>
+    <span class="vuln-severity high">🟠 高危</span>
+  </div>
+  <p><strong>位置：</strong><code>/recharge</code> — POST 路由</p>
+  <p><strong>描述：</strong>amount 可为任意负数，充负值等于扣钱。如果输入比余额还大的负数，余额变成负数，代表用户可以"欠债"，这在用户管理系统中不应存在。</p>
+  <p><strong>攻击场景：</strong>充 -99999999999999 → 余额变成巨大的负数 → 系统负债。</p>
+</div>
+
+<div class="vuln-card high">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-14：未登录也可充值（越权操作）</span>
+    <span class="vuln-severity high">🟠 高危</span>
+  </div>
+  <p><strong>位置：</strong><code>/recharge</code> — POST 路由</p>
+  <p><strong>描述：</strong>任何人无需登录即可直接 POST 请求 <code>/recharge</code> 修改任意用户的余额，只需知道 user_id。攻击者可任意篡改所有用户的余额。</p>
+  <p><strong>攻击场景：</strong>攻击者直接 <code>curl -X POST ... -d "user_id=admin&amount=0"</code> 无需任何身份认证。</p>
+</div>
+
+<div class="vuln-card medium">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-15：注册错误信息泄露</span>
+    <span class="vuln-severity medium">🟡 中危</span>
+  </div>
+  <p><strong>位置：</strong><code>/register</code> — POST 路由</p>
+  <p><strong>描述：</strong>注册重复用户名时，系统直接返回 SQLite 底层错误：<code>UNIQUE constraint failed: users.username</code>。攻击者可以用此接口探测哪些用户名已注册。</p>
+  <p><strong>攻击场景：</strong>尝试注册 "admin" → 报错 UNIQUE → 确认 admin 已存在 → 枚举所有用户名。</p>
+</div>
+
+<div class="vuln-card medium">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-16：搜索接口未登录泄露用户数据</span>
+    <span class="vuln-severity medium">🟡 中危</span>
+  </div>
+  <p><strong>位置：</strong><code>/search</code> — GET 路由</p>
+  <p><strong>描述：</strong>无需登录即可搜索所有用户的邮箱和手机号。输入一个简单字母即可返回大量用户信息，造成隐私泄露。</p>
+  <p><strong>攻击场景：</strong><code>/search?keyword=a</code> → 返回所有用户名中包含 a 的用户的完整资料。</p>
+</div>
+
+<h2 class="section">3. 攻击演示</h2>
+
+<h3>3.1 充值天文数字</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">curl -X POST http://localhost:5000/recharge \<br>
+&nbsp;&nbsp;-d "user_id=1&amp;amount=9999999999999"</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">余额从 0.0 变为 10000000000699.0（一千万亿）</span>
+</div>
+
+<h3>3.2 充负值制造负数余额</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">curl -X POST http://localhost:5000/recharge \<br>
+&nbsp;&nbsp;-d "user_id=1&amp;amount=-99999999999999"</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">余额从正数变为 -89999999999300.0（负数）</span>
+</div>
+
+<h3>3.3 未登录越权充值</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code"># 无需任何 Cookie/Session<br>
+curl -X POST http://localhost:5000/recharge \<br>
+&nbsp;&nbsp;-d "user_id=2&amp;amount=99999"</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">alice 的余额被未登录攻击者修改为 12221212.0</span>
+</div>
+
+<h3>3.4 注册探测用户名</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">curl -X POST http://localhost:5000/register \<br>
+&nbsp;&nbsp;-d "username=admin&amp;password=x&amp;email=x&amp;phone=x"</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">返回: UNIQUE constraint failed: users.username<br>攻击者确认 "admin" 已注册</span>
+</div>
+
+<h2 class="section">4. 修复方案</h2>
+
+<h3>4.1 VULN-12：充值金额上限</h3>
+<div class="code-block">
+<span class="keyword">if</span> abs(amount_num) &gt; 10000:<br>
+&nbsp;&nbsp;<span class="keyword">return</span> redirect(<span class="string">f"/profile?user_id={user_id}"</span>)&nbsp;&nbsp;<span class="comment"># 单笔不超过 ±10000</span>
+</div>
+
+<h3>4.2 VULN-13：防止余额为负数</h3>
+<div class="code-block">
+new_balance = current_balance + amount_num<br>
+<span class="keyword">if</span> new_balance &lt; 0:<br>
+&nbsp;&nbsp;<span class="keyword">return</span> redirect(<span class="string">f"/profile?user_id={user_id}"</span>)&nbsp;&nbsp;<span class="comment"># 余额不低于 0</span>
+</div>
+
+<h3>4.3 VULN-14：充值需要登录</h3>
+<div class="code-block">
+<span class="keyword">if</span> <span class="string">"username"</span> <span class="keyword">not in</span> session:<br>
+&nbsp;&nbsp;<span class="keyword">return</span> redirect(<span class="string">"/login"</span>)&nbsp;&nbsp;<span class="comment"># 未登录的充值请求全部拒绝</span>
+</div>
+
+<h3>4.4 VULN-15：隐藏错误详情</h3>
+<div class="code-block">
+<span class="comment"># 修复前：暴露 SQLite 底层错误</span><br>
+<span class="danger">return render_template("register.html", error=f"注册失败: {e}")</span><br><br>
+<span class="comment"># 修复后：通用提示</span><br>
+<span class="good">return render_template("register.html", error="注册失败，用户名可能已被占用")</span>
+</div>
+
+<h2 class="section">5. 修复前后对照</h2>
+
+<h3>/recharge 路由完整对比</h3>
+<div class="diff-box">
+  <div class="diff-item diff-before">
+    <div class="diff-label">❌ 修复前</div>
+    def recharge():<br>
+    &nbsp;&nbsp;<span class="bad"># 无登录检查</span><br>
+    &nbsp;&nbsp;user_id = request.form.get("user_id")<br>
+    &nbsp;&nbsp;amount = request.form.get("amount", "0")<br>
+    &nbsp;&nbsp;<span class="bad">UPDATE users SET balance = balance + ?</span><br>
+    &nbsp;&nbsp;<span class="bad"># 无上限、无负数检查</span>
+  </div>
+  <div class="diff-item diff-after">
+    <div class="diff-label">✅ 修复后</div>
+    def recharge():<br>
+    &nbsp;&nbsp;<span class="good">if "username" not in session: redirect</span><br>
+    &nbsp;&nbsp;user_id = request.form.get("user_id")<br>
+    &nbsp;&nbsp;amount = request.form.get("amount", "0")<br>
+    &nbsp;&nbsp;<span class="good">if abs(amount) &gt; 10000: redirect</span><br>
+    &nbsp;&nbsp;<span class="good">if new_balance &lt; 0: redirect</span><br>
+    &nbsp;&nbsp;UPDATE users SET balance = ?<br>
+    &nbsp;&nbsp;<span class="good"># 三层防护：登录 + 上限 + 余额非负</span>
+  </div>
+</div>
+
+<h2 class="section">6. 修复验证</h2>
+
+<table>
+  <tr><th>#</th><th>测试</th><th style="width:100px;">结果</th></tr>
+  <tr><td>1</td><td>充值 99999（超过 10000 上限）→ 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>充负值导致余额负数 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>未登录发起充值 → 跳转登录页</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>重复注册 → 通用错误提示，不暴露 UNIQUE 信息</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>5</td><td>正常充值 5000 → 成功到账</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>6</td><td>正常扣款 -3000 且余额仍 ≥ 0 → 成功</td><td class="status-fixed">✅ 通过</td></tr>
+</table>
+
+<h2 class="section">7. 全部四轮汇总</h2>
+
+<table>
+  <tr><th>轮次</th><th>审计内容</th><th>漏洞数</th><th>严重</th><th>高危</th><th>中危</th><th>状态</th></tr>
+  <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>-</td><td>4</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 4 轮</td><td>业务逻辑</td><td>5</td><td>1</td><td>2</td><td>2</td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>16</strong></td><td><strong>8</strong></td><td><strong>2</strong></td><td><strong>6</strong></td><td><strong>全部已修复</strong></td></tr>
+</table>
+
+<h3>本轮总结</h3>
+<p>
+业务逻辑漏洞是最容易被忽视的安全问题。代码没有语法错误，SQL 也没有注入风险，
+但<strong>缺少业务规则校验</strong>导致用户可以做不合理的事。
+修复的核心是 <strong>3 条规则</strong>：
+</p>
+<ul>
+  <li><strong>💰 金额控制：</strong>单次充值上限 ±10000，余额不能为负</li>
+  <li><strong>🔐 操作鉴权：</strong>修改余额必须登录</li>
+  <li><strong>🎯 信息最小化：</strong>错误提示不暴露数据库内部信息</li>
+</ul>
+
+<div class="footer-note">
+  <p>安全漏洞审计报告 · 第4轮 — 业务逻辑安全 | 报告日期：2026-07-10</p>
+  <p>项目地址：https://github.com/sencly-book/user-management</p>
+</div>
+
+</body>
+</html>
