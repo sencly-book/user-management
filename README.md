@@ -135,6 +135,29 @@ curl -X POST http://localhost:5000/register -d "username=admin&password=x&email=
 curl http://localhost:5000/profile?user_id=2
 ```
 
+### 第五轮：动态页面路径遍历（2 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 19 | **动态页面路径遍历** | 🔴 严重 | `/page?name=../../../etc/passwd` 可读取任意系统文件 |
+| 20 | **敏感文件泄露** | 🔴 严重 | 可读取 `app.py` 源码、数据库文件、`.git/config`、`/etc/shadow` |
+
+#### 攻击演示
+
+```bash
+# 读取 app.py 源码
+curl "http://localhost:5000/page?name=../app.py"
+
+# 读取 /etc/passwd（系统用户列表）
+curl "http://localhost:5000/page?name=../../../etc/passwd"
+
+# 读取 /etc/shadow（密码哈希）
+curl "http://localhost:5000/page?name=../../../../etc/shadow"
+
+# 读取 .git/config（仓库配置）
+curl "http://localhost:5000/page?name=../.git/config"
+```
+
 ---
 
 ## 🔧 修复方法与结果
@@ -210,6 +233,22 @@ def profile():
 return redirect("/profile?msg=" + quote("充值成功，当前余额: 500.0"))
 ```
 
+### 第五轮修复：路径遍历
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 19 | 使用 `os.path.abspath()` 规范化路径，检查是否在 pages 目录内 | ✅ 路径遍历被拦截 |
+| 20 | 越界访问直接返回"页面不存在" | ✅ 系统敏感文件无法读取 |
+
+```python
+# 修复：路径遍历防护
+pages_dir = os.path.join(os.path.dirname(__file__), "pages")
+requested_path = os.path.abspath(os.path.join(pages_dir, name))
+
+if not requested_path.startswith(os.path.abspath(pages_dir) + os.sep):
+    page_content = "页面不存在"
+```
+
 ---
 
 ## 📁 项目结构
@@ -222,6 +261,8 @@ user-management/
 ├── README.md                 # 本文件
 ├── data/
 │   └── users.db              # SQLite 数据库（用户表含余额）
+├── pages/                  # 动态页面目录
+│   └── help.html           # 帮助中心页面
 ├── static/
 │   ├── uploads/              # 头像/文件上传目录
 │   └── css/
@@ -247,6 +288,7 @@ user-management/
 | `/search` | GET | 搜索用户（`?keyword=xxx`） | 否 |
 | `/profile` | GET | 个人中心（从session获取用户，不接受URL参数） | 是 |
 | `/recharge` | POST | 充值（`user_id` + `amount`，可正可负） | 是 |
+| `/page` | GET | 动态页面加载（`?name=help` 显示帮助中心） | 否 |
 | `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
 | `/logout` | GET | 登出并跳转首页 | 是 |
 | `/report` | GET | 下载最新安全审计报告 PDF | 否 |
@@ -285,4 +327,11 @@ done
 
 # 9. 测试 SQL 注入已被拦截
 curl -s "http://localhost:5000/search?keyword=%27%20OR%20%271%27%3D%271"
+
+# 10. 测试动态页面加载
+curl -s "http://localhost:5000/page?name=help"
+
+# 11. 测试路径遍历已被拦截
+curl -s "http://localhost:5000/page?name=../app.py"
+# 返回"页面不存在"
 ```

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: "第 " counter(page) " 页"; font-size: 10px; color: #888; } }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #222; line-height: 1.7; font-size: 12px; }
+
+  .cover { text-align: center; padding: 120px 0 80px; }
+  .cover h1 { font-size: 26px; color: #1a1a2e; margin-bottom: 12px; letter-spacing: 2px; }
+  .cover .subtitle { font-size: 15px; color: #666; margin-bottom: 6px; }
+  .cover .meta { font-size: 12px; color: #999; margin-top: 30px; line-height: 2; }
+  .cover .divider { width: 60px; height: 3px; background: linear-gradient(90deg, #e74c3c, #c0392b); margin: 20px auto; border-radius: 2px; }
+  .cover .risk-badge { display: inline-block; background: #e74c3c; color: #fff; padding: 6px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-top: 10px; }
+
+  .toc { page-break-before: always; }
+  .toc h2 { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin-bottom: 16px; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 5px 0; font-size: 13px; }
+
+  h2.section { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin: 30px 0 16px; page-break-before: always; }
+  h2.section:first-of-type { page-break-before: avoid; }
+  h3 { font-size: 15px; color: #2c3e50; margin: 20px 0 8px; }
+  p { margin-bottom: 10px; text-align: justify; }
+
+  .vuln-card { border: 1px solid #e0e0e0; border-radius: 8px; margin: 14px 0; padding: 14px 16px; page-break-inside: avoid; }
+  .vuln-card.critical { border-left: 4px solid #e74c3c; }
+  .vuln-card .vuln-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .vuln-card .vuln-title { font-weight: bold; font-size: 13px; }
+  .vuln-card .vuln-severity { font-size: 11px; padding: 2px 10px; border-radius: 3px; font-weight: bold; }
+  .vuln-card .vuln-severity.critical { background: #fdedec; color: #e74c3c; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; page-break-inside: avoid; }
+  th { background: #1a1a2e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+
+  .code-block { background: #1e1e2e; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.5; margin: 8px 0; overflow-x: auto; page-break-inside: avoid; }
+  .code-block .comment { color: #6a9955; }
+  .code-block .keyword { color: #569cd6; }
+  .code-block .danger { color: #f44747; }
+  .code-block .good { color: #4ec9b0; }
+
+  .status-fixed { color: #27ae60; font-weight: bold; }
+
+  .diff-box { display: flex; gap: 12px; margin: 8px 0; page-break-inside: avoid; }
+  .diff-box .diff-item { flex: 1; border-radius: 6px; padding: 10px 12px; font-size: 11px; }
+  .diff-box .diff-before { background: #fdedec; border: 1px solid #f5c6cb; }
+  .diff-box .diff-after { background: #e8f8f5; border: 1px solid #a3e4d7; }
+  .diff-box .diff-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+  .diff-box .diff-before .diff-label { color: #e74c3c; }
+  .diff-box .diff-after .diff-label { color: #27ae60; }
+
+  .attack-box { background: #1a1a2e; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.6; page-break-inside: avoid; }
+  .attack-box .title { color: #ffd700; font-weight: bold; font-size: 12px; font-family: sans-serif; }
+  .attack-box .code { color: #e0e0e0; }
+  .attack-box .bad { color: #ff6b6b; }
+  .attack-box .result { color: #4ec9b0; }
+
+  ul { margin: 6px 0 6px 18px; }
+  li { margin-bottom: 4px; }
+  .footer-note { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="risk-badge">安全漏洞审计报告 · 第5轮</div>
+  <h1>用户信息管理平台<br>路径遍历漏洞审计报告</h1>
+  <div class="divider"></div>
+  <p class="subtitle">User Management Platform — Path Traversal Vulnerability Assessment</p>
+  <div class="meta">
+    <p><strong>目标系统：</strong>用户信息管理平台 (Flask)</p>
+    <p><strong>报告日期：</strong>2026-07-13</p>
+    <p><strong>漏洞等级：</strong>严重 × 2</p>
+    <p><strong>修复状态：</strong>✅ 全部已修复</p>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ul>
+    <li>1. 报告概述</li>
+    <li>2. 漏洞详情</li>
+    <li>3. 攻击演示（含实况结果）</li>
+    <li>4. 修复方案</li>
+    <li>5. 修复前后对照</li>
+    <li>6. 修复验证</li>
+    <li>7. 全部五轮汇总</li>
+  </ul>
+</div>
+
+<h2 class="section">1. 报告概述</h2>
+
+<h3>1.1 本轮背景</h3>
+<p>
+系统新增了<strong>动态页面加载功能</strong>（<code>/page?name=help</code>），
+该功能读取 <code>pages/</code> 目录下的 HTML 文件并显示在首页上。
+由于代码直接将用户输入的 <code>name</code> 参数拼接到文件路径中，
+且<strong>没有做任何路径校验</strong>，导致严重的路径遍历漏洞。
+</p>
+
+<h3>1.2 什么是路径遍历？</h3>
+<p style="background:#fdedec;padding:10px 14px;border-radius:6px;border-left:4px solid #e74c3c;">
+<b>路径遍历（Path Traversal）</b>攻击者通过 <code>../</code> 跳出限制目录，
+读取服务器上的任意文件。这是 Web 应用最常见的文件操作漏洞之一。
+</p>
+
+<h2 class="section">2. 漏洞详情</h2>
+
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-19：动态页面路径遍历</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>/page</code> — GET 路由</p>
+  <p><strong>漏洞代码：</strong></p>
+  <div class="code-block">
+name = request.args.get(<span class="string">"name"</span>, <span class="string">""</span>)<br>
+<span class="danger">page_path = os.path.join("pages", name)</span>&nbsp;&nbsp;<span class="comment">← 无任何校验</span><br>
+<span class="danger">open(page_path, "r").read()</span>
+  </div>
+  <p><strong>描述：</strong>攻击者输入 <code>../app.py</code>，路径变为 <code>pages/../app.py</code>，即 <code>app.py</code>。输入 <code>../../../etc/passwd</code> 可读取系统用户文件。</p>
+</div>
+
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-20：敏感文件泄露</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>/page</code> — GET 路由</p>
+  <p><strong>描述：</strong>利用路径遍历可读取以下敏感文件：</p>
+  <ul>
+    <li><code>app.py</code> — Flask 源码泄露（路由、数据库、密钥逻辑）</li>
+    <li><code>data/users.db</code> — SQLite 数据库文件（所有用户数据）</li>
+    <li><code>.git/config</code> — Git 仓库配置泄露</li>
+    <li><code>/etc/passwd</code> — 系统用户列表</li>
+    <li><code>/etc/shadow</code> — 系统用户密码哈希</li>
+  </ul>
+</div>
+
+<h2 class="section">3. 攻击演示</h2>
+
+<h3>3.1 读取 app.py 源码</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">GET /page?name=../app.py</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">成功读取 Flask 应用源码：</span><br>
+<span class="result">from flask import Flask, render_template<br>import sqlite3<br>app.secret_key = os.environ.get("SECRET_KEY", ...)</span>
+</div>
+
+<h3>3.2 读取系统用户文件</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">GET /page?name=../../../etc/passwd</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">成功读取到系统用户名列表：</span><br>
+<span class="result">root:x:0:0:root:/root:/usr/bin/zsh<br>daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</span>
+</div>
+
+<h3>3.3 读取密码哈希</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">GET /page?name=../../../../etc/shadow</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">成功读取到密码哈希（可用于暴力破解）：</span><br>
+<span class="result">root:$y$j9T$ploEafxsTnm.o4cBGWzZL1$tZxW/pojXn31M1ALHNNkndLE/...</span>
+</div>
+
+<h3>3.4 读取 Git 配置</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求</span><br>
+<span class="code">GET /page?name=../.git/config</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">成功读取 Git 仓库配置：</span><br>
+<span class="result">[core]<br>repositoryformatversion = 0<br>url = https://github.com/sencly-book/user-management.git</span>
+</div>
+
+<h2 class="section">4. 修复方案</h2>
+
+<h3>核心修复：路径规范化 + 边界检查</h3>
+<div class="code-block">
+<span class="comment"># 1. 确定 pages 目录的绝对路径</span><br>
+pages_dir = os.path.join(os.path.dirname(<span class="string">__file__</span>), <span class="string">"pages"</span>)<br><br>
+<span class="comment"># 2. 将用户请求的路径解析为绝对路径</span><br>
+requested_path = os.path.abspath(os.path.join(pages_dir, name))<br><br>
+<span class="comment"># 3. 检查是否在 pages 目录内</span><br>
+<span class="keyword">if not</span> requested_path.startswith(os.path.abspath(pages_dir) + os.sep):<br>
+&nbsp;&nbsp;page_content = <span class="string">"页面不存在"</span>&nbsp;&nbsp;<span class="comment"># 越界拒绝</span>
+</div>
+
+<p><strong>原理：</strong>无论攻击者传入多少 <code>../</code>，<code>os.path.abspath()</code> 都会解析出真实路径。只要这个真实路径不在 <code>pages/</code> 目录下，就拒绝访问。</p>
+
+<h2 class="section">5. 修复前后对照</h2>
+
+<div class="diff-box">
+  <div class="diff-item diff-before">
+    <div class="diff-label">❌ 修复前</div>
+    page_path = os.path.join("pages", name)<br>
+    open(page_path).read()<br><br>
+    → name = "../app.py"<br>
+    → 读取 pages/../app.py<br>
+    → ✅ 成功读取源码
+  </div>
+  <div class="diff-item diff-after">
+    <div class="diff-label">✅ 修复后</div>
+    requested_path = os.path.abspath(...)<br>
+    if not in pages_dir: reject<br><br>
+    → name = "../app.py"<br>
+    → 规范化后不在 pages/ 下<br>
+    → 🚫 拒绝访问
+  </div>
+</div>
+
+<h2 class="section">6. 修复验证</h2>
+
+<table>
+  <tr><th style="width:30px;">#</th><th>测试</th><th style="width:100px;">结果</th></tr>
+  <tr><td>1</td><td>正常访问 <code>?name=help</code> → 显示帮助中心</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>路径遍历 <code>?name=../app.py</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>路径遍历 <code>?name=../../../etc/passwd</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>路径遍历 <code>?name=../../../../etc/shadow</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>5</td><td>路径遍历 <code>?name=../.git/config</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>6</td><td>路径遍历 <code>?name=../data/users.db</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+</table>
+
+<h2 class="section">7. 全部五轮汇总</h2>
+
+<table>
+  <tr><th>轮次</th><th>审计内容</th><th>漏洞数</th><th>严重</th><th>高危</th><th>中危</th><th>状态</th></tr>
+  <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>-</td><td>4</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 4 轮</td><td>业务逻辑</td><td>7</td><td>2</td><td>2</td><td>3</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 5 轮</td><td>路径遍历</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>20</strong></td><td><strong>11</strong></td><td><strong>2</strong></td><td><strong>7</strong></td><td><strong>全部已修复</strong></td></tr>
+</table>
+
+<h3>安全建议</h3>
+<ul>
+  <li><strong>永远不要信任用户输入的文件名：</strong>即使只是读取文件，也要校验路径</li>
+  <li><strong>使用规范化路径：</strong>用 <code>os.path.abspath()</code> 解析后再做前缀检查</li>
+  <li><strong>限定读取范围：</strong>确保程序只能访问预期目录内的文件</li>
+  <li><strong>最小化文件权限：</strong>Web 应用不应具备读取系统文件（如 /etc/shadow）的权限</li>
+</ul>
+
+<div class="footer-note">
+  <p>安全漏洞审计报告 · 第5轮 — 路径遍历安全 | 报告日期：2026-07-13</p>
+  <p>项目地址：https://github.com/sencly-book/user-management</p>
+</div>
+
+</body>
+</html>
