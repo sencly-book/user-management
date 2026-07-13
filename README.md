@@ -135,11 +135,11 @@ curl -X POST http://localhost:5000/register -d "username=admin&password=x&email=
 curl http://localhost:5000/profile?user_id=2
 ```
 
-### 第五轮：动态页面路径遍历（2 项）
+### 第五轮：动态页面文件包含漏洞（2 项）
 
 | # | 漏洞 | 严重程度 | 描述 |
 |:-:|:----|:-------:|:----|
-| 19 | **动态页面路径遍历** | 🔴 严重 | `/page?name=../../../etc/passwd` 可读取任意系统文件 |
+| 19 | **本地文件包含（LFI）** | 🔴 严重 | `/page?name=../../../etc/passwd` 可读取任意系统文件 |
 | 20 | **敏感文件泄露** | 🔴 严重 | 可读取 `app.py` 源码、数据库文件、`.git/config`、`/etc/shadow` |
 
 #### 攻击演示
@@ -233,15 +233,15 @@ def profile():
 return redirect("/profile?msg=" + quote("充值成功，当前余额: 500.0"))
 ```
 
-### 第五轮修复：路径遍历
+### 第五轮修复：文件包含
 
 | # | 修复方法 | 修复后 |
 |:-:|:--------|:------:|
-| 19 | 使用 `os.path.abspath()` 规范化路径，检查是否在 pages 目录内 | ✅ 路径遍历被拦截 |
+| 19 | 使用 `os.path.abspath()` 规范化路径，检查是否在 pages 目录内 | ✅ 文件包含攻击被拦截 |
 | 20 | 越界访问直接返回"页面不存在" | ✅ 系统敏感文件无法读取 |
 
 ```python
-# 修复：路径遍历防护
+# 修复：文件包含防护（防止 LFI）
 pages_dir = os.path.join(os.path.dirname(__file__), "pages")
 requested_path = os.path.abspath(os.path.join(pages_dir, name))
 
@@ -331,7 +331,7 @@ curl -s "http://localhost:5000/search?keyword=%27%20OR%20%271%27%3D%271"
 # 10. 测试动态页面加载
 curl -s "http://localhost:5000/page?name=help"
 
-# 11. 测试路径遍历已被拦截
+# 11. 测试文件包含已被拦截
 curl -s "http://localhost:5000/page?name=../app.py"
 # 返回"页面不存在"
 ```

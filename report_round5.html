@@ -67,9 +67,9 @@
 
 <div class="cover">
   <div class="risk-badge">安全漏洞审计报告 · 第5轮</div>
-  <h1>用户信息管理平台<br>路径遍历漏洞审计报告</h1>
+  <h1>用户信息管理平台<br>文件包含漏洞审计报告</h1>
   <div class="divider"></div>
-  <p class="subtitle">User Management Platform — Path Traversal Vulnerability Assessment</p>
+  <p class="subtitle">User Management Platform — File Inclusion Vulnerability Assessment</p>
   <div class="meta">
     <p><strong>目标系统：</strong>用户信息管理平台 (Flask)</p>
     <p><strong>报告日期：</strong>2026-07-13</p>
@@ -98,30 +98,31 @@
 系统新增了<strong>动态页面加载功能</strong>（<code>/page?name=help</code>），
 该功能读取 <code>pages/</code> 目录下的 HTML 文件并显示在首页上。
 由于代码直接将用户输入的 <code>name</code> 参数拼接到文件路径中，
-且<strong>没有做任何路径校验</strong>，导致严重的路径遍历漏洞。
+且<strong>没有做任何校验</strong>，导致严重的<strong>本地文件包含（LFI）漏洞</strong>。
 </p>
 
-<h3>1.2 什么是路径遍历？</h3>
+<h3>1.2 什么是文件包含漏洞？</h3>
 <p style="background:#fdedec;padding:10px 14px;border-radius:6px;border-left:4px solid #e74c3c;">
-<b>路径遍历（Path Traversal）</b>攻击者通过 <code>../</code> 跳出限制目录，
-读取服务器上的任意文件。这是 Web 应用最常见的文件操作漏洞之一。
+<b>文件包含漏洞（File Inclusion）</b>是指 Web 应用将用户输入作为文件路径来读取或执行文件。
+攻击者可利用 <code>../</code> 跳出限制目录，读取服务器上的任意文件（如源码、密码文件、数据库）。
+这是 OWASP Top 10 常见漏洞之一。
 </p>
 
 <h2 class="section">2. 漏洞详情</h2>
 
 <div class="vuln-card critical">
   <div class="vuln-header">
-    <span class="vuln-title">VULN-19：动态页面路径遍历</span>
+    <span class="vuln-title">VULN-19：本地文件包含（LFI）</span>
     <span class="vuln-severity critical">🔴 严重</span>
   </div>
   <p><strong>位置：</strong><code>/page</code> — GET 路由</p>
   <p><strong>漏洞代码：</strong></p>
   <div class="code-block">
 name = request.args.get(<span class="string">"name"</span>, <span class="string">""</span>)<br>
-<span class="danger">page_path = os.path.join("pages", name)</span>&nbsp;&nbsp;<span class="comment">← 无任何校验</span><br>
-<span class="danger">open(page_path, "r").read()</span>
+<span class="danger">page_path = os.path.join("pages", name)</span>&nbsp;&nbsp;<span class="comment">← 直接拼接用户输入</span><br>
+<span class="danger">open(page_path, "r").read()</span>&nbsp;&nbsp;<span class="comment">← 读取任意文件</span>
   </div>
-  <p><strong>描述：</strong>攻击者输入 <code>../app.py</code>，路径变为 <code>pages/../app.py</code>，即 <code>app.py</code>。输入 <code>../../../etc/passwd</code> 可读取系统用户文件。</p>
+  <p><strong>描述：</strong>攻击者输入 <code>../app.py</code>，路径变为 <code>pages/../app.py</code>，等价于读取 <code>app.py</code>。输入 <code>../../../etc/passwd</code> 可读取系统文件。</p>
 </div>
 
 <div class="vuln-card critical">
@@ -129,20 +130,19 @@ name = request.args.get(<span class="string">"name"</span>, <span class="string"
     <span class="vuln-title">VULN-20：敏感文件泄露</span>
     <span class="vuln-severity critical">🔴 严重</span>
   </div>
-  <p><strong>位置：</strong><code>/page</code> — GET 路由</p>
-  <p><strong>描述：</strong>利用路径遍历可读取以下敏感文件：</p>
+  <p><strong>描述：</strong>利用文件包含可读取以下敏感文件：</p>
   <ul>
-    <li><code>app.py</code> — Flask 源码泄露（路由、数据库、密钥逻辑）</li>
-    <li><code>data/users.db</code> — SQLite 数据库文件（所有用户数据）</li>
-    <li><code>.git/config</code> — Git 仓库配置泄露</li>
+    <li><code>app.py</code> — Flask 源码泄露（数据库配置、密钥逻辑）</li>
+    <li><code>data/users.db</code> — SQLite 数据库（所有用户名密码）</li>
+    <li><code>.git/config</code> — Git 仓库配置</li>
     <li><code>/etc/passwd</code> — 系统用户列表</li>
-    <li><code>/etc/shadow</code> — 系统用户密码哈希</li>
+    <li><code>/etc/shadow</code> — 系统密码哈希（可暴力破解）</li>
   </ul>
 </div>
 
 <h2 class="section">3. 攻击演示</h2>
 
-<h3>3.1 读取 app.py 源码</h3>
+<h3>3.1 读取 app.py 源码（文件包含 + 路径遍历）</h3>
 <div class="attack-box">
 <span class="title">📌 攻击请求</span><br>
 <span class="code">GET /page?name=../app.py</span><br><br>
@@ -151,13 +151,13 @@ name = request.args.get(<span class="string">"name"</span>, <span class="string"
 <span class="result">from flask import Flask, render_template<br>import sqlite3<br>app.secret_key = os.environ.get("SECRET_KEY", ...)</span>
 </div>
 
-<h3>3.2 读取系统用户文件</h3>
+<h3>3.2 读取系统密码文件</h3>
 <div class="attack-box">
 <span class="title">📌 攻击请求</span><br>
 <span class="code">GET /page?name=../../../etc/passwd</span><br><br>
 <span class="title">😱 攻击结果</span><br>
-<span class="bad">成功读取到系统用户名列表：</span><br>
-<span class="result">root:x:0:0:root:/root:/usr/bin/zsh<br>daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</span>
+<span class="bad">成功读取系统用户列表：</span><br>
+<span class="result">root:x:0:0:root:/root:/usr/bin/zsh</span>
 </div>
 
 <h3>3.3 读取密码哈希</h3>
@@ -165,8 +165,8 @@ name = request.args.get(<span class="string">"name"</span>, <span class="string"
 <span class="title">📌 攻击请求</span><br>
 <span class="code">GET /page?name=../../../../etc/shadow</span><br><br>
 <span class="title">😱 攻击结果</span><br>
-<span class="bad">成功读取到密码哈希（可用于暴力破解）：</span><br>
-<span class="result">root:$y$j9T$ploEafxsTnm.o4cBGWzZL1$tZxW/pojXn31M1ALHNNkndLE/...</span>
+<span class="bad">成功读取到密码哈希，可离线暴力破解：</span><br>
+<span class="result">root:$y$j9T$ploEafxsTnm.o4cBGWzZL1$...</span>
 </div>
 
 <h3>3.4 读取 Git 配置</h3>
@@ -174,43 +174,41 @@ name = request.args.get(<span class="string">"name"</span>, <span class="string"
 <span class="title">📌 攻击请求</span><br>
 <span class="code">GET /page?name=../.git/config</span><br><br>
 <span class="title">😱 攻击结果</span><br>
-<span class="bad">成功读取 Git 仓库配置：</span><br>
-<span class="result">[core]<br>repositoryformatversion = 0<br>url = https://github.com/sencly-book/user-management.git</span>
+<span class="bad">成功读取仓库配置：</span><br>
+<span class="result">[core]<br>repositoryformatversion = 0</span>
 </div>
 
 <h2 class="section">4. 修复方案</h2>
 
-<h3>核心修复：路径规范化 + 边界检查</h3>
+<h3>核心修复：路径规范化 + 目录边界检查</h3>
 <div class="code-block">
-<span class="comment"># 1. 确定 pages 目录的绝对路径</span><br>
-pages_dir = os.path.join(os.path.dirname(<span class="string">__file__</span>), <span class="string">"pages"</span>)<br><br>
-<span class="comment"># 2. 将用户请求的路径解析为绝对路径</span><br>
+<span class="comment"># 修复文件包含漏洞的关键：检查文件是否在允许的目录内</span><br>
+pages_dir = os.path.join(os.path.dirname(<span class="string">__file__</span>), <span class="string">"pages"</span>)<br>
 requested_path = os.path.abspath(os.path.join(pages_dir, name))<br><br>
-<span class="comment"># 3. 检查是否在 pages 目录内</span><br>
 <span class="keyword">if not</span> requested_path.startswith(os.path.abspath(pages_dir) + os.sep):<br>
-&nbsp;&nbsp;page_content = <span class="string">"页面不存在"</span>&nbsp;&nbsp;<span class="comment"># 越界拒绝</span>
+&nbsp;&nbsp;page_content = <span class="string">"页面不存在"</span>&nbsp;&nbsp;<span class="comment"># 禁止读取 pages/ 目录外的文件</span>
 </div>
 
-<p><strong>原理：</strong>无论攻击者传入多少 <code>../</code>，<code>os.path.abspath()</code> 都会解析出真实路径。只要这个真实路径不在 <code>pages/</code> 目录下，就拒绝访问。</p>
+<p><strong>原理：</strong>无论攻击者传入多少 <code>../</code>，<code>os.path.abspath()</code> 都会解析出文件的真实路径。只要这个真实路径不在 <code>pages/</code> 目录下，就拒绝读取。这样既保留了动态页面功能，又防止了文件包含攻击。</p>
 
 <h2 class="section">5. 修复前后对照</h2>
 
 <div class="diff-box">
   <div class="diff-item diff-before">
-    <div class="diff-label">❌ 修复前</div>
+    <div class="diff-label">❌ 修复前（存在文件包含漏洞）</div>
     page_path = os.path.join("pages", name)<br>
     open(page_path).read()<br><br>
     → name = "../app.py"<br>
     → 读取 pages/../app.py<br>
-    → ✅ 成功读取源码
+    → ✅ 成功包含源码
   </div>
   <div class="diff-item diff-after">
-    <div class="diff-label">✅ 修复后</div>
+    <div class="diff-label">✅ 修复后（文件包含防御）</div>
     requested_path = os.path.abspath(...)<br>
     if not in pages_dir: reject<br><br>
     → name = "../app.py"<br>
     → 规范化后不在 pages/ 下<br>
-    → 🚫 拒绝访问
+    → 🚫 拒绝包含
   </div>
 </div>
 
@@ -219,11 +217,10 @@ requested_path = os.path.abspath(os.path.join(pages_dir, name))<br><br>
 <table>
   <tr><th style="width:30px;">#</th><th>测试</th><th style="width:100px;">结果</th></tr>
   <tr><td>1</td><td>正常访问 <code>?name=help</code> → 显示帮助中心</td><td class="status-fixed">✅ 通过</td></tr>
-  <tr><td>2</td><td>路径遍历 <code>?name=../app.py</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
-  <tr><td>3</td><td>路径遍历 <code>?name=../../../etc/passwd</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
-  <tr><td>4</td><td>路径遍历 <code>?name=../../../../etc/shadow</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
-  <tr><td>5</td><td>路径遍历 <code>?name=../.git/config</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
-  <tr><td>6</td><td>路径遍历 <code>?name=../data/users.db</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>文件包含 <code>?name=../app.py</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>文件包含 <code>?name=../../../etc/passwd</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>文件包含 <code>?name=../../../../etc/shadow</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>5</td><td>文件包含 <code>?name=../.git/config</code> → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
 </table>
 
 <h2 class="section">7. 全部五轮汇总</h2>
@@ -234,20 +231,20 @@ requested_path = os.path.abspath(os.path.join(pages_dir, name))<br><br>
   <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
   <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
   <tr><td>第 4 轮</td><td>业务逻辑</td><td>7</td><td>2</td><td>2</td><td>3</td><td class="status-fixed">✅</td></tr>
-  <tr><td>第 5 轮</td><td>路径遍历</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 5 轮</td><td>文件包含</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
   <tr><td><strong>合计</strong></td><td></td><td><strong>20</strong></td><td><strong>11</strong></td><td><strong>2</strong></td><td><strong>7</strong></td><td><strong>全部已修复</strong></td></tr>
 </table>
 
 <h3>安全建议</h3>
 <ul>
-  <li><strong>永远不要信任用户输入的文件名：</strong>即使只是读取文件，也要校验路径</li>
-  <li><strong>使用规范化路径：</strong>用 <code>os.path.abspath()</code> 解析后再做前缀检查</li>
-  <li><strong>限定读取范围：</strong>确保程序只能访问预期目录内的文件</li>
-  <li><strong>最小化文件权限：</strong>Web 应用不应具备读取系统文件（如 /etc/shadow）的权限</li>
+  <li><strong>永远不要信任用户输入的文件名：</strong>任何文件操作前必须校验路径</li>
+  <li><strong>使用白名单：</strong>只允许预定义的页面名称，禁止用户自定义路径</li>
+  <li><strong>目录边界检查：</strong>用 <code>os.path.abspath()</code> 解析真实路径，确保在允许范围内</li>
+  <li><strong>最小权限原则：</strong>Web 应用不应有读取系统文件（如 /etc/shadow）的权限</li>
 </ul>
 
 <div class="footer-note">
-  <p>安全漏洞审计报告 · 第5轮 — 路径遍历安全 | 报告日期：2026-07-13</p>
+  <p>安全漏洞审计报告 · 第5轮 — 文件包含安全 | 报告日期：2026-07-13</p>
   <p>项目地址：https://github.com/sencly-book/user-management</p>
 </div>
 
