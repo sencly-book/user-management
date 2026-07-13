@@ -14,6 +14,7 @@
     </ul>
     <a href="/profile" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">个人中心</a>
     <a href="/upload" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">上传头像</a>
+    <a href="/page?name=help" class="btn btn-primary" style="margin-right: 8px; width: auto; display: inline-block;">帮助中心</a>
     <a href="/logout" class="btn btn-danger" style="display: inline-block;">退出登录</a>
     {% else %}
     <h2>请先登录</h2>
@@ -59,4 +60,10 @@
     </div>
     {% endif %}
 </div>
+
+{% if page_content %}
+<div class="card page-content-card">
+    {{ page_content | safe }}
+</div>
+{% endif %}
 {% endblock %}

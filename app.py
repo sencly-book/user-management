@@ -100,7 +100,7 @@ def index():
                 user_info["id"] = row[1]
         except Exception:
             pass  # 数据库出错时使用内存中的默认值
-    return render_template("index.html", user=user_info, search_results=None, keyword="")
+    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=None)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -133,7 +133,7 @@ def login():
                     user_info["id"] = row[1]
             except Exception:
                 pass
-            return render_template("index.html", user=user_info)
+            return render_template("index.html", user=user_info, page_content=None)
 
         record_failure(client_ip)
         return render_template("login.html", error="用户名或密码错误")
@@ -213,7 +213,7 @@ def search():
                 user_info["id"] = row[1]
         except Exception:
             pass
-    return render_template("index.html", user=user_info, search_results=results, keyword=keyword)
+    return render_template("index.html", user=user_info, search_results=results, keyword=keyword, page_content=None)
 
 
 @app.route("/logout")
@@ -315,6 +315,36 @@ def recharge():
     conn.close()
 
     return redirect("/profile?msg=" + quote(f"充值成功，当前余额: {new_balance}"))
+
+
+@app.route("/page", methods=["GET"])
+def page():
+    name = request.args.get("name", "")
+
+    # 修复路径遍历漏洞：规范化路径并检查是否在 pages 目录内
+    pages_dir = os.path.join(os.path.dirname(__file__), "pages")
+    requested_path = os.path.abspath(os.path.join(pages_dir, name))
+
+    page_content = None
+    if not requested_path.startswith(os.path.abspath(pages_dir) + os.sep):
+        page_content = "页面不存在"
+    elif os.path.isfile(requested_path):
+        with open(requested_path, "r", encoding="utf-8") as f:
+            page_content = f.read()
+    else:
+        # 尝试加上 .html 后缀
+        requested_path_html = requested_path + ".html"
+        if os.path.isfile(requested_path_html):
+            with open(requested_path_html, "r", encoding="utf-8") as f:
+                page_content = f.read()
+        else:
+            page_content = "页面不存在"
+
+    username = session.get("username")
+    user_info = None
+    if username and username in USERS:
+        user_info = USERS[username]
+    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=page_content)
 
 
 if __name__ == "__main__":
