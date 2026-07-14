@@ -158,6 +158,27 @@ curl "http://localhost:5000/page?name=../../../../etc/shadow"
 curl "http://localhost:5000/page?name=../.git/config"
 ```
 
+### 第六轮：CSRF 跨站请求伪造漏洞（2 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 21 | **修改密码无 CSRF 防护** | 🔴 严重 | 攻击者可伪造表单，利用受害者 session 修改其密码 |
+| 22 | **充值接口无 CSRF 防护** | 🟠 高危 | 攻击者可伪造充值表单，让受害者 unknowingly 充值或扣款 |
+
+#### 攻击演示
+
+```bash
+# 攻击者搭建钓鱼页面，受害者点击后自动提交：
+# POST /change-password  username=admin&new_password=hacked
+# → 浏览器自动携带受害者 session Cookie → 密码被篡改
+
+# 攻击者无需知道原密码，无需 CSRF Token
+# 只需用户访问恶意页面时恰好已登录即可
+
+curl -X POST http://localhost:5000/change-password \
+  -d "username=admin&new_password=hacked_by_csrf"
+```
+
 ---
 
 ## 🔧 修复方法与结果
@@ -249,6 +270,29 @@ if not requested_path.startswith(os.path.abspath(pages_dir) + os.sep):
     page_content = "页面不存在"
 ```
 
+### 第六轮修复：CSRF 防护
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 21 | 添加 CSRF Token 生成和校验函数 | ✅ 跨站伪造的修改密码请求被拒绝 |
+| 22 | /recharge 和 /change-password 均校验 CSRF Token | ✅ 跨站伪造的充值请求被拒绝 |
+
+```python
+# 修复：CSRF Token 防护
+def generate_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+def validate_csrf_token():
+    token = request.form.get("csrf_token")
+    stored = session.get("csrf_token")
+    return token and stored and token == stored
+
+# 每个需要 POST 的表单都传入隐藏字段：
+# <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+```
+
 ---
 
 ## 📁 项目结构
@@ -287,7 +331,8 @@ user-management/
 | `/register` | GET/POST | 注册新用户 | 否 |
 | `/search` | GET | 搜索用户（`?keyword=xxx`） | 否 |
 | `/profile` | GET | 个人中心（从session获取用户，不接受URL参数） | 是 |
-| `/recharge` | POST | 充值（`user_id` + `amount`，可正可负） | 是 |
+| `/change-password` | POST | 修改密码（需 CSRF Token，无需原密码） | 是 |
+| `/recharge` | POST | 充值（`user_id` + `amount`，需 CSRF Token） | 是 |
 | `/page` | GET | 动态页面加载（`?name=help` 显示帮助中心） | 否 |
 | `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
 | `/logout` | GET | 登出并跳转首页 | 是 |

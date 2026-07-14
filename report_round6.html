@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: "第 " counter(page) " 页"; font-size: 10px; color: #888; } }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #222; line-height: 1.7; font-size: 12px; }
+  .cover { text-align: center; padding: 120px 0 80px; }
+  .cover h1 { font-size: 26px; color: #1a1a2e; margin-bottom: 12px; letter-spacing: 2px; }
+  .cover .subtitle { font-size: 15px; color: #666; margin-bottom: 6px; }
+  .cover .meta { font-size: 12px; color: #999; margin-top: 30px; line-height: 2; }
+  .cover .divider { width: 60px; height: 3px; background: linear-gradient(90deg, #e74c3c, #c0392b); margin: 20px auto; border-radius: 2px; }
+  .cover .risk-badge { display: inline-block; background: #e74c3c; color: #fff; padding: 6px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-top: 10px; }
+  .toc { page-break-before: always; }
+  .toc h2 { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin-bottom: 16px; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 5px 0; font-size: 13px; }
+  h2.section { font-size: 18px; color: #1a1a2e; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin: 30px 0 16px; page-break-before: always; }
+  h3 { font-size: 15px; color: #2c3e50; margin: 20px 0 8px; }
+  p { margin-bottom: 10px; text-align: justify; }
+  .vuln-card { border: 1px solid #e0e0e0; border-radius: 8px; margin: 14px 0; padding: 14px 16px; page-break-inside: avoid; }
+  .vuln-card.critical { border-left: 4px solid #e74c3c; }
+  .vuln-card.high { border-left: 4px solid #e67e22; }
+  .vuln-card .vuln-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .vuln-card .vuln-title { font-weight: bold; font-size: 13px; }
+  .vuln-card .vuln-severity { font-size: 11px; padding: 2px 10px; border-radius: 3px; font-weight: bold; }
+  .vuln-card .vuln-severity.critical { background: #fdedec; color: #e74c3c; }
+  .vuln-card .vuln-severity.high { background: #fdf2e9; color: #e67e22; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; page-break-inside: avoid; }
+  th { background: #1a1a2e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .code-block { background: #1e1e2e; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.5; margin: 8px 0; overflow-x: auto; page-break-inside: avoid; }
+  .code-block .comment { color: #6a9955; }
+  .code-block .keyword { color: #569cd6; }
+  .code-block .danger { color: #f44747; }
+  .code-block .good { color: #4ec9b0; }
+  .status-fixed { color: #27ae60; font-weight: bold; }
+  .diff-box { display: flex; gap: 12px; margin: 8px 0; page-break-inside: avoid; }
+  .diff-box .diff-item { flex: 1; border-radius: 6px; padding: 10px 12px; font-size: 11px; }
+  .diff-box .diff-before { background: #fdedec; border: 1px solid #f5c6cb; }
+  .diff-box .diff-after { background: #e8f8f5; border: 1px solid #a3e4d7; }
+  .diff-box .diff-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+  .diff-box .diff-before .diff-label { color: #e74c3c; }
+  .diff-box .diff-after .diff-label { color: #27ae60; }
+  .attack-box { background: #1a1a2e; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-family: "Consolas","Courier New",monospace; font-size: 11px; line-height: 1.6; page-break-inside: avoid; }
+  .attack-box .title { color: #ffd700; font-weight: bold; font-size: 12px; font-family: sans-serif; }
+  .attack-box .code { color: #e0e0e0; }
+  .attack-box .bad { color: #ff6b6b; }
+  .attack-box .result { color: #4ec9b0; }
+  .summary-grid { display: flex; gap: 12px; margin: 14px 0; page-break-inside: avoid; }
+  .summary-box { flex: 1; text-align: center; padding: 14px; border-radius: 8px; }
+  .summary-box.critical { background: #fdedec; border: 1px solid #e74c3c; }
+  .summary-box.high { background: #fdf2e9; border: 1px solid #e67e22; }
+  .summary-box.fixed { background: #e8f8f5; border: 1px solid #27ae60; }
+  .summary-box .num { font-size: 28px; font-weight: bold; }
+  .summary-box.critical .num { color: #e74c3c; }
+  .summary-box.high .num { color: #e67e22; }
+  .summary-box.fixed .num { color: #27ae60; }
+  .summary-box .label { font-size: 11px; color: #666; margin-top: 4px; }
+  ul { margin: 6px 0 6px 18px; }
+  li { margin-bottom: 4px; }
+  .footer-note { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="risk-badge">安全漏洞审计报告 · 第6轮</div>
+  <h1>用户信息管理平台<br>CSRF 跨站请求伪造漏洞审计报告</h1>
+  <div class="divider"></div>
+  <p class="subtitle">User Management Platform — Cross-Site Request Forgery Assessment</p>
+  <div class="meta">
+    <p><strong>目标系统：</strong>用户信息管理平台 (Flask)</p>
+    <p><strong>报告日期：</strong>2026-07-14</p>
+    <p><strong>漏洞等级：</strong>严重 × 1 &nbsp;|&nbsp; 高危 × 1</p>
+    <p><strong>修复状态：</strong>✅ 全部已修复</p>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ul>
+    <li>1. 报告概述</li>
+    <li>2. 漏洞详情</li>
+    <li>3. 攻击演示</li>
+    <li>4. 修复方案</li>
+    <li>5. 修复前后对照</li>
+    <li>6. 修复验证</li>
+    <li>7. 全部六轮汇总</li>
+  </ul>
+</div>
+
+<h2 class="section">1. 报告概述</h2>
+<h3>1.1 本轮背景</h3>
+<p>
+系统新增了<strong>密码修改功能</strong>（<code>/change-password</code>），由于不需要原密码、不需要 CSRF Token、不验证请求来源，导致严重的<strong>CSRF（跨站请求伪造）漏洞</strong>。攻击者只需诱导已登录用户点击一个链接或按钮，即可在用户不知情的情况下修改其密码，完全接管账号。
+</p>
+<h3>1.2 什么是 CSRF？</h3>
+<p style="background:#fdedec;padding:10px 14px;border-radius:6px;border-left:4px solid #e74c3c;">
+<b>CSRF（Cross-Site Request Forgery）</b>攻击者伪造请求，利用受害者已登录的 session，在受害者不知情的情况下执行恶意操作（如修改密码、转账）。浏览器会自动携带目标站点的 Cookie，服务端无法区分请求是用户主动发起还是被伪造的。
+</p>
+
+<h2 class="section">2. 漏洞详情</h2>
+<div class="summary-grid">
+  <div class="summary-box critical"><div class="num">1</div><div class="label">🔴 严重</div></div>
+  <div class="summary-box high"><div class="num">1</div><div class="label">🟠 高危</div></div>
+  <div class="summary-box fixed"><div class="num">2/2</div><div class="label">✅ 已修复</div></div>
+</div>
+
+<div class="vuln-card critical">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-21：修改密码无 CSRF 防护</span>
+    <span class="vuln-severity critical">🔴 严重</span>
+  </div>
+  <p><strong>位置：</strong><code>/change-password</code> — POST 路由</p>
+  <p><strong>漏洞代码：</strong></p>
+  <div class="code-block">
+<span class="danger">@app.route("/change-password", methods=["POST"])</span><br>
+<span class="danger">def change_password():</span><br>
+&nbsp;&nbsp;<span class="comment"># ❌ 没有 CSRF Token 校验</span><br>
+&nbsp;&nbsp;<span class="comment"># ❌ 不需要原密码</span><br>
+&nbsp;&nbsp;<span class="comment"># ❌ 不验证 Referer</span><br>
+&nbsp;&nbsp;username = request.form.get("username")&nbsp;&nbsp;<span class="comment">// 任何已登录用户可改任何人</span><br>
+&nbsp;&nbsp;new_password = request.form.get("new_password")
+  </div>
+  <p><strong>描述：</strong>攻击者搭建恶意页面，内嵌一个自动提交到 <code>/change-password</code> 的表单。受害者只要恰好在登录状态，浏览器自动携带 session Cookie，密码即在毫秒间被篡改。</p>
+</div>
+
+<div class="vuln-card high">
+  <div class="vuln-header">
+    <span class="vuln-title">VULN-22：充值接口无 CSRF 防护</span>
+    <span class="vuln-severity high">🟠 高危</span>
+  </div>
+  <p><strong>位置：</strong><code>/recharge</code> — POST 路由</p>
+  <p><strong>描述：</strong>同样没有 CSRF Token 校验，攻击者可构造表单让受害者在不知情下充值或扣款。虽然已限制金额上限和余额非负，但攻击者可通过多次小额扣款耗尽用户余额。</p>
+</div>
+
+<h2 class="section">3. 攻击演示</h2>
+<h3>3.1 攻击者构造钓鱼页面</h3>
+<div class="attack-box">
+<span class="title">📌 攻击者在自己的网站上放置以下 HTML</span><br>
+<span class="code">&lt;form action="http://目标网站/change-password" method="POST"&gt;<br>
+&nbsp;&nbsp;&lt;input type="hidden" name="username" value="admin"&gt;<br>
+&nbsp;&nbsp;&lt;input type="hidden" name="new_password" value="hacked"&gt;<br>
+&nbsp;&nbsp;&lt;button&gt;🎁 点击领取红包&lt;/button&gt;<br>
+&lt;/form&gt;</span><br><br>
+<span class="title">😱 受害者点击后发生了什么？</span><br>
+<span class="bad">1. 浏览器自动携带了目标站点的 session Cookie</span><br>
+<span class="bad">2. POST 请求发送到 /change-password</span><br>
+<span class="bad">3. 服务端没有 CSRF Token 校验 → 直接通过</span><br>
+<span class="bad">4. 密码被改为 "hacked"</span><br>
+<span class="bad">5. 攻击者用新密码登录 → 完全接管账号</span>
+</div>
+
+<h3>3.2 实际攻击验证</h3>
+<div class="attack-box">
+<span class="title">📌 攻击结果</span><br>
+<span class="bad">旧密码 "admin123" 登录 → ❌ 失败</span><br>
+<span class="bad">新密码 "hacked_by_csrf" 登录 → ✅ 成功</span><br>
+<span class="result">攻击者成功完全控制了 admin 账号！</span>
+</div>
+
+<h2 class="section">4. 修复方案</h2>
+<h3>4.1 新增 CSRF Token 机制</h3>
+<div class="code-block">
+<span class="keyword">import</span> secrets<br><br>
+<span class="keyword">def</span> generate_csrf_token():<br>
+&nbsp;&nbsp;<span class="keyword">if</span> <span class="string">"csrf_token"</span> <span class="keyword">not in</span> session:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;session[<span class="string">"csrf_token"</span>] = secrets.token_hex(<span class="string">32</span>)<br>
+&nbsp;&nbsp;<span class="keyword">return</span> session[<span class="string">"csrf_token"</span>]<br><br>
+<span class="keyword">def</span> validate_csrf_token():<br>
+&nbsp;&nbsp;token = request.form.get(<span class="string">"csrf_token"</span>)<br>
+&nbsp;&nbsp;stored = session.get(<span class="string">"csrf_token"</span>)<br>
+&nbsp;&nbsp;<span class="keyword">return</span> token <span class="keyword">and</span> stored <span class="keyword">and</span> token == stored
+</div>
+
+<h3>4.2 在 POST 路由中校验</h3>
+<div class="code-block">
+<span class="keyword">if not</span> validate_csrf_token():<br>
+&nbsp;&nbsp;<span class="keyword">return</span> redirect(<span class="string">"/profile?msg="</span> + quote(<span class="string">"CSRF Token 无效"</span>))
+</div>
+
+<h3>4.3 在表单中添加隐藏字段</h3>
+<div class="code-block">
+<span class="comment"># 模板中：</span><br>
+&lt;input type="hidden" name="csrf_token" value="<span class="good">{{ csrf_token }}</span>"&gt;
+</div>
+
+<h2 class="section">5. 修复前后对照</h2>
+<div class="diff-box">
+  <div class="diff-item diff-before">
+    <div class="diff-label">❌ 修复前</div>
+    &lt;form action="/change-password"&gt;<br>
+    &nbsp;&nbsp;username + new_password<br>
+    &lt;/form&gt;<br><br>
+    攻击者从外部提交:<br>
+    ✅ 直接通过<br>
+    → CSRF 攻击成功
+  </div>
+  <div class="diff-item diff-after">
+    <div class="diff-label">✅ 修复后</div>
+    &lt;form action="/change-password"&gt;<br>
+    &nbsp;&nbsp;username + new_password + <span style="color:#4ec9b0;">csrf_token</span><br>
+    &lt;/form&gt;<br><br>
+    攻击者从外部提交（无 Token）:<br>
+    🚫 被拒绝<br>
+    → CSRF 攻击失败
+  </div>
+</div>
+
+<h2 class="section">6. 修复验证</h2>
+<table>
+  <tr><th style="width:30px;">#</th><th>测试</th><th style="width:100px;">结果</th></tr>
+  <tr><td>1</td><td>不带 CSRF Token 修改密码 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>带 CSRF Token 修改密码 → 成功</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>不带 CSRF Token 充值 → 被拒绝</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>带 CSRF Token 充值 → 成功</td><td class="status-fixed">✅ 通过</td></tr>
+</table>
+
+<h2 class="section">7. 全部六轮汇总</h2>
+<table>
+  <tr><th>轮次</th><th>审计内容</th><th>漏洞数</th><th>严重</th><th>高危</th><th>中危</th><th>状态</th></tr>
+  <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>-</td><td>4</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 4 轮</td><td>业务逻辑</td><td>7</td><td>2</td><td>2</td><td>3</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 5 轮</td><td>文件包含</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 6 轮</td><td>CSRF</td><td>2</td><td>1</td><td>1</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>22</strong></td><td><strong>12</strong></td><td><strong>3</strong></td><td><strong>7</strong></td><td><strong>全部已修复</strong></td></tr>
+</table>
+
+<h3>安全建议</h3>
+<ul>
+  <li><strong>所有 POST 请求都必须有 CSRF 防护：</strong>修改密码、充值等敏感操作尤其重要</li>
+  <li><strong>修改密码必须验证原密码：</strong>即使有 CSRF Token，也应要求用户输入原密码</li>
+  <li><strong>不要信任浏览器自动携带的 Cookie：</strong>CSRF 正是利用了这一特性</li>
+  <li><strong>使用 SameSite Cookie：</strong>设置 <code>SameSite=Lax</code> 可防止大部分跨站请求携带 Cookie</li>
+</ul>
+
+<div class="footer-note">
+  <p>安全漏洞审计报告 · 第6轮 — CSRF 安全 | 报告日期：2026-07-14</p>
+  <p>项目地址：https://github.com/sencly-book/user-management</p>
+</div>
+</body>
+</html>
