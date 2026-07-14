@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import secrets
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,6 +8,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24).hex())
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB
+
+
+def generate_csrf_token():
+    """生成 CSRF Token 并存入 session"""
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+
+def validate_csrf_token():
+    """验证 CSRF Token"""
+    token = request.form.get("csrf_token")
+    stored = session.get("csrf_token")
+    return token and stored and token == stored
 
 # ========== 数据库初始化 ==========
 
@@ -274,7 +289,7 @@ def profile():
 
     # 获取充值结果提示信息（从 recharge 重定向带过来的）
     msg = request.args.get("msg", "")
-    return render_template("profile.html", user=dict(row), error=None, msg=msg)
+    return render_template("profile.html", user=dict(row), error=None, msg=msg, csrf_token=generate_csrf_token())
 
 
 @app.route("/recharge", methods=["POST"])
@@ -282,6 +297,10 @@ def recharge():
     # 修复1：必须登录才能充值
     if "username" not in session:
         return redirect("/login")
+
+    # CSRF Token 校验
+    if not validate_csrf_token():
+        return redirect("/profile?msg=" + quote("充值失败，CSRF Token 无效"))
 
     user_id = request.form.get("user_id")
     amount = request.form.get("amount", "0")
@@ -319,9 +338,12 @@ def recharge():
 
 @app.route("/change-password", methods=["POST"])
 def change_password():
-    # 只要登录就能修改密码
     if "username" not in session:
         return redirect("/login")
+
+    # CSRF Token 校验
+    if not validate_csrf_token():
+        return redirect("/profile?msg=" + quote("密码修改失败，CSRF Token 无效"))
 
     username = request.form.get("username")
     new_password = request.form.get("new_password")

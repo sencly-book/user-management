@@ -25,6 +25,7 @@
         <h3>充值</h3>
         <form method="post" action="/recharge" class="recharge-form">
             <input type="hidden" name="user_id" value="{{ user.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="amount">充值金额</label>
                 <input type="number" id="amount" name="amount" class="form-input" step="any" placeholder="请输入金额" required>
@@ -37,6 +38,7 @@
         <h3>修改密码</h3>
         <form method="post" action="/change-password" class="recharge-form">
             <input type="hidden" name="username" value="{{ user.username }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="new_password">新密码</label>
                 <input type="password" id="new_password" name="new_password" class="form-input" placeholder="请输入新密码" required>
