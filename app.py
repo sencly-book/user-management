@@ -317,6 +317,32 @@ def recharge():
     return redirect("/profile?msg=" + quote(f"充值成功，当前余额: {new_balance}"))
 
 
+@app.route("/change-password", methods=["POST"])
+def change_password():
+    # 只要登录就能修改密码
+    if "username" not in session:
+        return redirect("/login")
+
+    username = request.form.get("username")
+    new_password = request.form.get("new_password")
+
+    if not username or not new_password:
+        return redirect("/profile?msg=" + quote("密码修改失败，参数不完整"))
+
+    # 更新内存中的密码哈希
+    if username in USERS:
+        USERS[username]["password"] = generate_password_hash(new_password)
+
+    # 同时更新 SQLite 数据库中的密码
+    conn = sqlite3.connect("data/users.db")
+    c = conn.cursor()
+    c.execute("UPDATE users SET password = ? WHERE username = ?", (new_password, username))
+    conn.commit()
+    conn.close()
+
+    return redirect("/profile?msg=" + quote(f"密码修改成功，用户 {username} 的新密码已生效"))
+
+
 @app.route("/page", methods=["GET"])
 def page():
     name = request.args.get("name", "")
