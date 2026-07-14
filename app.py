@@ -352,4 +352,19 @@ if __name__ == "__main__":
     # 确保上传目录存在
     os.makedirs(os.path.join(os.path.dirname(__file__), "static", "uploads"), exist_ok=True)
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+
+    # 如果端口被占用，先杀死旧进程再启动
+    import subprocess, signal
+    try:
+        result = subprocess.run(
+            ["lsof", "-ti", ":5000"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.stdout.strip():
+            old_pid = result.stdout.strip()
+            os.kill(int(old_pid), signal.SIGKILL)
+            print(f"[启动] 已杀死旧进程 PID={old_pid}，释放端口 5000")
+    except Exception:
+        pass  # 没有旧进程或无法杀死，直接启动
+
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
