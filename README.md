@@ -179,6 +179,26 @@ curl -X POST http://localhost:5000/change-password \
   -d "username=admin&new_password=hacked_by_csrf"
 ```
 
+### 第七轮：SSRF 服务端请求伪造漏洞（2 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 23 | **SSRF 攻击内网服务** | 🔴 严重 | `/fetch-url` 允许访问内网 IP（127.0.0.1、192.168.x.x） |
+| 24 | **file:// 协议读取任意文件** | 🔴 严重 | 通过 `file:///etc/passwd` 读取服务器本地敏感文件 |
+
+#### 攻击演示
+
+```bash
+# 读取 /etc/passwd（file:// 协议）
+curl -X POST http://localhost:5000/fetch-url -d "url=file:///etc/passwd"
+
+# SSRF 扫描内网端口
+curl -X POST http://localhost:5000/fetch-url -d "url=http://127.0.0.1:5000/"
+
+# 读取 app.py 源码
+curl -X POST http://localhost:5000/fetch-url -d "url=file:///path/to/app.py"
+```
+
 ---
 
 ## 🔧 修复方法与结果
@@ -291,6 +311,25 @@ def validate_csrf_token():
 
 # 每个需要 POST 的表单都传入隐藏字段：
 # <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+```
+
+### 第七轮修复：SSRF 防护
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 23 | 只允许 http/https 协议，阻止 file:// 等 | ✅ file:// 协议被拦截，无法读取本地文件 |
+| 24 | 解析域名到 IP，阻止内网/私有/回环地址 | ✅ 内网 IP（127.0.0.1/192.168.x.x/10.x.x.x）被拦截 |
+
+```python
+# 修复：SSRF 防护
+parsed = urllib.parse.urlparse(target_url)
+if parsed.scheme not in ("http", "https"):
+    return "不支持的协议"
+
+ip = socket.gethostbyname(hostname)
+ip_obj = ipaddress.ip_address(ip)
+if ip_obj.is_private or ip_obj.is_loopback:
+    return "不允许访问内网地址"
 ```
 
 ---
