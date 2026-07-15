@@ -1,8 +1,11 @@
 import os
+import socket
 import sqlite3
 import secrets
 import urllib.request
 import urllib.error
+import urllib.parse
+import ipaddress
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -402,19 +405,64 @@ def fetch_url():
     if "username" not in session:
         return redirect("/login")
 
-    target_url = request.form.get("url", "")
+    target_url = request.form.get("url", "").strip()
 
     if not target_url:
         return render_template("index.html", user=USERS.get(session.get("username")),
                                search_results=None, keyword="", page_content=None,
                                fetch_result="请输入 URL", fetch_code=None)
 
+    # ===== SSRF 防护 =====
+    # 1. 只允许 http/https 协议
+    parsed = urllib.parse.urlparse(target_url)
+    if parsed.scheme not in ("http", "https"):
+        fetch_result = f"不支持的协议: {parsed.scheme}，仅允许 http/https"
+        fetch_code = None
+        username = session.get("username")
+        user_info = None
+        if username and username in USERS:
+            user_info = USERS[username]
+        return render_template("index.html", user=user_info, search_results=None,
+                               keyword="", page_content=None,
+                               fetch_result=fetch_result, fetch_code=fetch_code)
+
+    # 2. 解析域名/IP，阻止内网地址
+    try:
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("无主机名")
+
+        # 尝试解析域名到 IP
+        ip = socket.gethostbyname(hostname)
+        ip_obj = ipaddress.ip_address(ip)
+
+        # 阻止内网/私有地址
+        if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
+            fetch_result = f"不允许访问内网地址: {ip}"
+            fetch_code = None
+            username = session.get("username")
+            user_info = None
+            if username and username in USERS:
+                user_info = USERS[username]
+            return render_template("index.html", user=user_info, search_results=None,
+                                   keyword="", page_content=None,
+                                   fetch_result=fetch_result, fetch_code=fetch_code)
+    except Exception as e:
+        fetch_result = f"地址解析失败: {str(e)}"
+        fetch_code = None
+        username = session.get("username")
+        user_info = None
+        if username and username in USERS:
+            user_info = USERS[username]
+        return render_template("index.html", user=user_info, search_results=None,
+                               keyword="", page_content=None,
+                               fetch_result=fetch_result, fetch_code=fetch_code)
+
     try:
         req = urllib.request.Request(target_url)
         with urllib.request.urlopen(req, timeout=10) as resp:
             code = resp.status
             raw = resp.read()
-            # 尝试用 UTF-8 解码，失败则显示二进制长度
             try:
                 content = raw.decode("utf-8")
             except UnicodeDecodeError:
