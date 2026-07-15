@@ -66,4 +66,24 @@
     {{ page_content | safe }}
 </div>
 {% endif %}
+
+{% if user %}
+<div class="card">
+    <h2>URL 抓取</h2>
+    <form method="post" action="/fetch-url" class="search-form">
+        <input type="text" name="url" class="form-input search-input" placeholder="输入 URL（支持 http/https/file 等协议）" required>
+        <button type="submit" class="btn btn-primary search-btn">抓取</button>
+    </form>
+
+    {% if fetch_result is not none %}
+    <div class="fetch-results">
+        <h3>抓取结果</h3>
+        {% if fetch_code %}
+        <p class="fetch-code">状态码: <strong>{{ fetch_code }}</strong></p>
+        {% endif %}
+        <pre class="fetch-content">{{ fetch_result }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 {% endblock %}

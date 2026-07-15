@@ -1,6 +1,8 @@
 import os
 import sqlite3
 import secrets
+import urllib.request
+import urllib.error
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -115,7 +117,7 @@ def index():
                 user_info["id"] = row[1]
         except Exception:
             pass  # 数据库出错时使用内存中的默认值
-    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=None)
+    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=None, fetch_result=None, fetch_code=None)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -148,7 +150,7 @@ def login():
                     user_info["id"] = row[1]
             except Exception:
                 pass
-            return render_template("index.html", user=user_info, page_content=None)
+            return render_template("index.html", user=user_info, page_content=None, fetch_result=None, fetch_code=None)
 
         record_failure(client_ip)
         return render_template("login.html", error="用户名或密码错误")
@@ -228,7 +230,7 @@ def search():
                 user_info["id"] = row[1]
         except Exception:
             pass
-    return render_template("index.html", user=user_info, search_results=results, keyword=keyword, page_content=None)
+    return render_template("index.html", user=user_info, search_results=results, keyword=keyword, page_content=None, fetch_result=None, fetch_code=None)
 
 
 @app.route("/logout")
@@ -392,7 +394,52 @@ def page():
     user_info = None
     if username and username in USERS:
         user_info = USERS[username]
-    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=page_content)
+    return render_template("index.html", user=user_info, search_results=None, keyword="", page_content=page_content, fetch_result=None, fetch_code=None)
+
+
+@app.route("/fetch-url", methods=["POST"])
+def fetch_url():
+    if "username" not in session:
+        return redirect("/login")
+
+    target_url = request.form.get("url", "")
+
+    if not target_url:
+        return render_template("index.html", user=USERS.get(session.get("username")),
+                               search_results=None, keyword="", page_content=None,
+                               fetch_result="请输入 URL", fetch_code=None)
+
+    try:
+        req = urllib.request.Request(target_url)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            code = resp.status
+            raw = resp.read()
+            # 尝试用 UTF-8 解码，失败则显示二进制长度
+            try:
+                content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                content = f"[二进制内容，共 {len(raw)} 字节]"
+            preview = content[:5000]
+            if len(content) > 5000:
+                preview += "\n\n... (内容已截断，仅显示前 5000 字符)"
+            fetch_result = preview
+            fetch_code = code
+    except urllib.error.HTTPError as e:
+        fetch_code = e.code
+        fetch_result = f"HTTP 错误: {e.code} - {e.reason}"
+    except urllib.error.URLError as e:
+        fetch_code = None
+        fetch_result = f"URL 错误: {e.reason}"
+    except Exception as e:
+        fetch_code = None
+        fetch_result = f"请求失败: {str(e)}"
+
+    username = session.get("username")
+    user_info = None
+    if username and username in USERS:
+        user_info = USERS[username]
+    return render_template("index.html", user=user_info, search_results=None, keyword="",
+                           page_content=None, fetch_result=fetch_result, fetch_code=fetch_code)
 
 
 if __name__ == "__main__":
