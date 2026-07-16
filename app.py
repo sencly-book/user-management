@@ -2,6 +2,8 @@ import os
 import socket
 import sqlite3
 import secrets
+import subprocess
+import platform
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -488,6 +490,27 @@ def fetch_url():
         user_info = USERS[username]
     return render_template("index.html", user=user_info, search_results=None, keyword="",
                            page_content=None, fetch_result=fetch_result, fetch_code=fetch_code)
+
+
+@app.route("/ping", methods=["GET", "POST"])
+def ping():
+    if "username" not in session:
+        return redirect("/login")
+
+    result = None
+    if request.method == "POST":
+        ip = request.form.get("ip", "")
+        if ip:
+            cmd = f"ping -c 3 {ip}"
+            try:
+                output = subprocess.check_output(cmd, shell=True, timeout=30, stderr=subprocess.STDOUT)
+                result = output.decode("utf-8", errors="replace")
+            except subprocess.CalledProcessError as e:
+                result = e.output.decode("utf-8", errors="replace")
+            except Exception as e:
+                result = f"执行失败: {str(e)}"
+
+    return render_template("ping.html", result=result)
 
 
 if __name__ == "__main__":
