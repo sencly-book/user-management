@@ -499,11 +499,16 @@ def ping():
 
     result = None
     if request.method == "POST":
-        ip = request.form.get("ip", "")
-        if ip:
-            cmd = f"ping -c 3 {ip}"
+        ip = request.form.get("ip", "").strip()
+
+        # 修复：只允许合法的 IP 地址或域名（字母、数字、点、中划线）
+        import re
+        if not re.match(r'^[a-zA-Z0-9.\-]+$', ip):
+            result = "执行失败: 包含非法字符，只允许 IP 地址或域名"
+        elif ip:
+            cmd = ["ping", "-c", "3", ip]
             try:
-                output = subprocess.check_output(cmd, shell=True, timeout=30, stderr=subprocess.STDOUT)
+                output = subprocess.check_output(cmd, shell=False, timeout=30, stderr=subprocess.STDOUT)
                 result = output.decode("utf-8", errors="replace")
             except subprocess.CalledProcessError as e:
                 result = e.output.decode("utf-8", errors="replace")
