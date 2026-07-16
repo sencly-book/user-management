@@ -166,7 +166,7 @@ def login():
 
 @app.route("/report")
 def download_report():
-    return send_from_directory(".", "第7轮_SSRF漏洞审计报告.pdf", as_attachment=True)
+    return send_from_directory(".", "第8轮_命令注入漏洞审计报告.pdf", as_attachment=True)
 
 
 @app.route("/register", methods=["GET", "POST"])

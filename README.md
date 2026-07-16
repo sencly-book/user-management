@@ -199,6 +199,28 @@ curl -X POST http://localhost:5000/fetch-url -d "url=http://127.0.0.1:5000/"
 curl -X POST http://localhost:5000/fetch-url -d "url=file:///path/to/app.py"
 ```
 
+### 第八轮：命令注入漏洞（2 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 25 | **Ping 命令注入（RCE）** | 🔴 严重 | `/ping` 使用 f-string 拼接命令 + shell=True，可执行任意系统命令 |
+| 26 | **远程代码执行** | 🔴 严重 | 通过 `;`、`\|` 等分隔符执行 `cat /etc/passwd`、`whoami`、`ls` 等命令 |
+
+#### 攻击演示
+
+```bash
+# 执行系统命令（id、whoami）
+curl -X POST http://localhost:5000/ping -d "ip=8.8.8.8;id"
+curl -X POST http://localhost:5000/ping -d "ip=127.0.0.1;whoami"
+
+# 读取敏感文件
+curl -X POST http://localhost:5000/ping -d "ip=8.8.8.8;cat /etc/passwd"
+
+# 查看目录列表
+curl -X POST http://localhost:5000/ping -d "ip=8.8.8.8;ls -la"
+```
+
+---
 ---
 
 ## 🔧 修复方法与结果
@@ -332,6 +354,23 @@ if ip_obj.is_private or ip_obj.is_loopback:
     return "不允许访问内网地址"
 ```
 
+### 第八轮修复：命令注入防护
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 25 | 使用正则校验输入，仅允许字母/数字/点/中划线 | ✅ 分号、竖线、反引号等特殊字符被拦截 |
+| 26 | shell=True → shell=False（参数列表传递） | ✅ 即使注入也无法执行多条命令 |
+
+```python
+# 修复：命令注入防护
+import re
+if not re.match(r'^[a-zA-Z0-9.\-]+$', ip):
+    return "包含非法字符，只允许 IP 地址或域名"
+
+cmd = ["ping", "-c", "3", ip]           # 参数列表，不用字符串
+subprocess.check_output(cmd, shell=False)  # 禁止 shell 执行
+```
+
 ---
 
 ## 📁 项目结构
@@ -356,7 +395,8 @@ user-management/
     ├── login.html            # 登录页
     ├── register.html         # 注册页
     ├── upload.html           # 头像上传页
-    └── profile.html          # 个人中心（资料 + 充值）
+    ├── profile.html          # 个人中心（资料 + 充值）
+    └── ping.html             # Ping 网络诊断
 ```
 
 ---
@@ -373,6 +413,7 @@ user-management/
 | `/change-password` | POST | 修改密码（需 CSRF Token，无需原密码） | 是 |
 | `/recharge` | POST | 充值（`user_id` + `amount`，需 CSRF Token） | 是 |
 | `/page` | GET | 动态页面加载（`?name=help` 显示帮助中心） | 否 |
+| `/ping` | GET/POST | Ping 网络诊断（需登录） | 是 |
 | `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
 | `/logout` | GET | 登出并跳转首页 | 是 |
 | `/report` | GET | 下载最新安全审计报告 PDF | 否 |
