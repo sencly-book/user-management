@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}XML导入 - 用户管理系统{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>📄 XML 数据导入</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:16px;">输入 XML 数据，系统将自动解析并提取用户信息。</p>
+    <form method="post" action="/xml-import">
+        <div class="form-group">
+            <label for="xml_data">XML 数据</label>
+            <textarea id="xml_data" name="xml_data" class="form-input xml-textarea" rows="12" placeholder="请输入 XML 数据..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">导入</button>
+    </form>
+
+    {% if error %}
+    <div class="error-message" style="margin-top:16px;">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+    <div class="xml-result">
+        <h3>解析结果</h3>
+        <pre class="json-output">{{ result }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,4 +1,6 @@
 import os
+import re
+import json
 import socket
 import sqlite3
 import secrets
@@ -516,6 +518,65 @@ def ping():
                 result = f"执行失败: {str(e)}"
 
     return render_template("ping.html", result=result)
+
+
+@app.route("/xml-import", methods=["GET", "POST"])
+def xml_import():
+    if "username" not in session:
+        return redirect("/login")
+
+    result_json = None
+    error = None
+
+    if request.method == "POST":
+        xml_data = request.form.get("xml_data", "")
+
+        try:
+            # 1. 检测 XML 中是否有 <!ENTITY 和 SYSTEM 定义（支持单引号和双引号）
+            entity_match = re.search(r'<!ENTITY\s+\w+\s+SYSTEM\s+[\'"]([^\'"]+)[\'"]', xml_data)
+
+            if entity_match:
+                raw_path = entity_match.group(1)
+                # 去除 file:// 前缀（Python open() 不认识 URI）
+                file_path = raw_path.replace("file://", "")
+                # 2. 读取该文件的内容
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                    file_content = f.read()
+
+                # 3. 提取实体名称并替换
+                entity_name_match = re.search(r'<!ENTITY\s+(\w+)\s+SYSTEM', xml_data)
+                entity_name = entity_name_match.group(1) if entity_name_match else "xxe"
+
+                replaced_xml = re.sub(
+                    f'&{entity_name};',
+                    file_content,
+                    xml_data
+                )
+            else:
+                replaced_xml = xml_data
+
+            # 4. 解析替换后的 XML，提取 user 节点的 name 和 email
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(replaced_xml)
+
+            users = []
+            for user_elem in root.findall(".//user"):
+                name_elem = user_elem.find("name")
+                email_elem = user_elem.find("email")
+                user_data = {}
+                if name_elem is not None:
+                    user_data["name"] = name_elem.text
+                if email_elem is not None:
+                    user_data["email"] = email_elem.text
+                if user_data:
+                    users.append(user_data)
+
+            result_json = json.dumps(users, ensure_ascii=False, indent=2)
+
+        except Exception as e:
+            error = f"解析失败: {str(e)}"
+
+    return render_template("xml_import.html", result=result_json, error=error)
 
 
 if __name__ == "__main__":

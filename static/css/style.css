@@ -401,3 +401,32 @@ body {
     word-break: break-all;
     border: 1px solid #333;
 }
+
+/* XML 导入页面 */
+.xml-textarea {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px;
+}
+
+.xml-result {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.json-output {
+    background: #1e1e2e;
+    color: #4ec9b0;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
