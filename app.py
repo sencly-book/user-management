@@ -168,7 +168,7 @@ def login():
 
 @app.route("/report")
 def download_report():
-    return send_from_directory(".", "第8轮_命令注入漏洞审计报告.pdf", as_attachment=True)
+    return send_from_directory(".", "第9轮_XXE漏洞审计报告.pdf", as_attachment=True)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -532,32 +532,15 @@ def xml_import():
         xml_data = request.form.get("xml_data", "")
 
         try:
-            # 1. 检测 XML 中是否有 <!ENTITY 和 SYSTEM 定义（支持单引号和双引号）
-            entity_match = re.search(r'<!ENTITY\s+\w+\s+SYSTEM\s+[\'"]([^\'"]+)[\'"]', xml_data)
+            # 修复：禁止外部实体解析（XXE 防护）
+            # 1. 移除 DOCTYPE 声明，防止 ENTITY 和 SYSTEM 定义被执行
+            cleaned_xml = re.sub(r'<!DOCTYPE[^>]*>', '', xml_data)
+            # 2. 移除所有实体引用（&xxx; 格式）
+            cleaned_xml = re.sub(r'&\w+;', '', cleaned_xml)
 
-            if entity_match:
-                raw_path = entity_match.group(1)
-                # 去除 file:// 前缀（Python open() 不认识 URI）
-                file_path = raw_path.replace("file://", "")
-                # 2. 读取该文件的内容
-                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                    file_content = f.read()
-
-                # 3. 提取实体名称并替换
-                entity_name_match = re.search(r'<!ENTITY\s+(\w+)\s+SYSTEM', xml_data)
-                entity_name = entity_name_match.group(1) if entity_name_match else "xxe"
-
-                replaced_xml = re.sub(
-                    f'&{entity_name};',
-                    file_content,
-                    xml_data
-                )
-            else:
-                replaced_xml = xml_data
-
-            # 4. 解析替换后的 XML，提取 user 节点的 name 和 email
+            # 3. 使用 xml.etree.ElementTree 解析（默认不解析外部实体）
             import xml.etree.ElementTree as ET
-            root = ET.fromstring(replaced_xml)
+            root = ET.fromstring(cleaned_xml)
 
             users = []
             for user_elem in root.findall(".//user"):

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8">
+<style>
+  @page{size:A4;margin:2cm 2.2cm;@bottom-center{content:"第 " counter(page) " 页";font-size:10px;color:#888}}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;color:#222;line-height:1.7;font-size:12px}
+  .cover{text-align:center;padding:120px 0 80px}
+  .cover h1{font-size:26px;color:#1a1a2e;margin-bottom:12px;letter-spacing:2px}
+  .cover .subtitle{font-size:15px;color:#666;margin-bottom:6px}
+  .cover .meta{font-size:12px;color:#999;margin-top:30px;line-height:2}
+  .cover .divider{width:60px;height:3px;background:linear-gradient(90deg,#e74c3c,#c0392b);margin:20px auto;border-radius:2px}
+  .cover .risk-badge{display:inline-block;background:#e74c3c;color:#fff;padding:6px 24px;border-radius:4px;font-size:13px;font-weight:bold;letter-spacing:1px;margin-top:10px}
+  .toc{page-break-before:always}
+  .toc h2{font-size:18px;color:#1a1a2e;border-bottom:2px solid #e74c3c;padding-bottom:6px;margin-bottom:16px}
+  .toc ul{list-style:none;padding:5px 0;font-size:13px}
+  h2.section{font-size:18px;color:#1a1a2e;border-bottom:2px solid #e74c3c;padding-bottom:6px;margin:30px 0 16px;page-break-before:always}
+  h2.section:first-of-type{page-break-before:avoid}
+  h3{font-size:15px;color:#2c3e50;margin:20px 0 8px}
+  p{margin-bottom:10px;text-align:justify}
+  .vuln-card{border:1px solid #e0e0e0;border-radius:8px;margin:14px 0;padding:14px 16px;page-break-inside:avoid}
+  .vuln-card.critical{border-left:4px solid #e74c3c}
+  .vuln-card .vuln-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .vuln-card .vuln-title{font-weight:bold;font-size:13px}
+  .vuln-card .vuln-severity{font-size:11px;padding:2px 10px;border-radius:3px;font-weight:bold;background:#fdedec;color:#e74c3c}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px;page-break-inside:avoid}
+  th{background:#1a1a2e;color:#fff;padding:8px 10px;text-align:left;font-weight:600}
+  td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top}
+  tr:nth-child(even) td{background:#f8f9fa}
+  .code-block{background:#1e1e2e;color:#e0e0e0;padding:10px 14px;border-radius:6px;font-family:"Consolas","Courier New",monospace;font-size:11px;margin:8px 0;overflow-x:auto}
+  .code-block .comment{color:#6a9955}.code-block .keyword{color:#569cd6}.code-block .danger{color:#f44747}.code-block .good{color:#4ec9b0}
+  .status-fixed{color:#27ae60;font-weight:bold}
+  .diff-box{display:flex;gap:12px;margin:8px 0;page-break-inside:avoid}
+  .diff-box .diff-item{flex:1;border-radius:6px;padding:10px 12px;font-size:11px}
+  .diff-box .diff-before{background:#fdedec;border:1px solid #f5c6cb}
+  .diff-box .diff-after{background:#e8f8f5;border:1px solid #a3e4d7}
+  .diff-box .diff-label{font-weight:bold;font-size:11px;margin-bottom:4px;color:#e74c3c}
+  .diff-box .diff-after .diff-label{color:#27ae60}
+  .attack-box{background:#1a1a2e;border-radius:8px;padding:14px 16px;margin:12px 0;font-family:"Consolas","Courier New",monospace;font-size:11px;line-height:1.6}
+  .attack-box .title{color:#ffd700;font-weight:bold;font-size:12px;font-family:sans-serif}
+  .attack-box .code{color:#e0e0e0}.attack-box .bad{color:#ff6b6b}.attack-box .result{color:#4ec9b0}
+  .summary-grid{display:flex;gap:12px;margin:14px 0}
+  .summary-box{flex:1;text-align:center;padding:14px;border-radius:8px}
+  .summary-box.critical{background:#fdedec;border:1px solid #e74c3c}
+  .summary-box.fixed{background:#e8f8f5;border:1px solid #27ae60}
+  .summary-box .num{font-size:28px;font-weight:bold;color:#e74c3c}
+  .summary-box.fixed .num{color:#27ae60}
+  .summary-box .label{font-size:11px;color:#666;margin-top:4px}
+  ul{margin:6px 0 6px 18px}li{margin-bottom:4px}
+  .footer-note{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#888;text-align:center}
+</style></head>
+<body>
+<div class="cover">
+  <div class="risk-badge">安全漏洞审计报告 · 第9轮</div>
+  <h1>用户信息管理平台<br>XXE 外部实体注入漏洞审计报告</h1>
+  <div class="divider"></div>
+  <p class="subtitle">User Management Platform — XML External Entity Injection Assessment</p>
+  <div class="meta">
+    <p><strong>目标系统：</strong>用户信息管理平台 (Flask)</p>
+    <p><strong>报告日期：</strong>2026-07-17</p>
+    <p><strong>漏洞等级：</strong>严重 × 2</p>
+    <p><strong>修复状态：</strong>✅ 全部已修复</p>
+  </div>
+</div>
+<div class="toc">
+  <h2>目录</h2>
+  <ul><li>1. 报告概述</li><li>2. 漏洞详情</li><li>3. 攻击演示</li><li>4. 修复方案</li><li>5. 修复前后对照</li><li>6. 修复验证</li><li>7. 全部九轮汇总</li></ul>
+</div>
+
+<h2 class="section">1. 报告概述</h2>
+<h3>1.1 本轮背景</h3>
+<p>系统新增了<strong>XML 数据导入功能</strong>（<code>/xml-import</code>），该功能检测 XML 中的 <code>&lt;!ENTITY ... SYSTEM&gt;</code> 定义，提取文件路径并用 <code>open()</code> 读取本地文件内容后替换实体引用。这完全复现了经典的 <strong>XXE（XML External Entity）漏洞</strong>，攻击者可通过 <code>file:///etc/passwd</code> 读取任意服务器文件。</p>
+<h3>1.2 什么是 XXE？</h3>
+<p style="background:#fdedec;padding:10px 14px;border-radius:6px;border-left:4px solid #e74c3c;">
+<b>XXE（XML External Entity）</b>攻击者在 XML 中定义外部实体，指向服务器上的本地文件。当 XML 解析器处理实体引用时，文件内容被读取并返回给攻击者。这是 OWASP Top 10 常见漏洞之一。
+</p>
+
+<h2 class="section">2. 漏洞详情</h2>
+<div class="summary-grid">
+  <div class="summary-box critical"><div class="num">2</div><div class="label">🔴 严重漏洞</div></div>
+  <div class="summary-box fixed"><div class="num">2/2</div><div class="label">✅ 已修复</div></div>
+</div>
+
+<div class="vuln-card critical">
+  <div class="vuln-header"><span class="vuln-title">VULN-27：XXE 读取任意文件</span><span class="vuln-severity critical">🔴 严重</span></div>
+  <p><strong>位置：</strong><code>/xml-import</code> — POST 路由</p>
+  <p><strong>漏洞代码：</strong></p>
+  <div class="code-block">
+<span class="comment">// 手动检测 ENTITY + SYSTEM → 提取路径 → open() 读取 → 返回给用户</span><br>
+entity_match = re.search(<span class="string">r'<!ENTITY\s+\w+\s+SYSTEM\s+"([^"]+)"'</span>, xml_data)<br>
+<span class="danger">file_path = entity_match.group(1)</span><br>
+<span class="danger">file_content = open(file_path, "r").read()</span><br>
+<span class="comment">// 将文件内容替换掉 &xxe; 后解析 XML</span><br>
+<span class="danger">replaced_xml = re.sub(f'&{entity_name};', file_content, xml_data)</span>
+  </div>
+  <p><strong>描述：</strong>代码检测到 <code>&lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;</code> 后，提取路径 <code>/etc/passwd</code>，直接 <code>open()</code> 读取文件内容，然后替换掉 <code>&xxe;</code> 引用，最终包含在解析结果中返回给用户。</p>
+</div>
+
+<div class="vuln-card critical">
+  <div class="vuln-header"><span class="vuln-title">VULN-28：敏感文件泄露</span><span class="vuln-severity critical">🔴 严重</span></div>
+  <p><strong>可利用的读取目标：</strong></p>
+  <ul>
+    <li><code>/etc/passwd</code> — 系统用户列表 ✅ 已确认读取成功</li>
+    <li><code>/etc/shadow</code> — 系统密码哈希 ✅ 已确认可读取</li>
+    <li><code>app.py</code> — Flask 源码 ✅ 已确认可读取</li>
+    <li><code>.git/config</code> — Git 仓库配置</li>
+    <li><code>data/users.db</code> — SQLite 数据库文件</li>
+  </ul>
+</div>
+
+<h2 class="section">3. 攻击演示</h2>
+<h3>3.1 XXE Payload 读取 /etc/passwd</h3>
+<div class="attack-box">
+<span class="title">📌 攻击请求（POST /xml-import）</span><br>
+<span class="code">&lt;?xml version='1.0'?&gt;</span><br>
+<span class="code">&lt;!DOCTYPE foo [&lt;!ENTITY xxe SYSTEM <span class="bad">'file:///etc/passwd'</span>&gt;]&gt;</span><br>
+<span class="code">&lt;users&gt;&lt;user&gt;&lt;name&gt;<span class="bad">&xxe;</span>&lt;/name&gt;&lt;/user&gt;&lt;/users&gt;</span><br><br>
+<span class="title">😱 攻击结果</span><br>
+<span class="bad">root:x:0:0:root:/root:/usr/bin/zsh</span><br>
+<span class="bad">daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</span><br>
+<span class="result">✅ /etc/passwd 内容已泄露！</span>
+</div>
+
+<h3>3.2 其他可读取的文件</h3>
+<div class="attack-box">
+<span class="title">📌 其他攻击 Payload</span><br>
+<span class="code">file:///etc/shadow&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ root:$y$j9T$...（密码哈希）✅</span><br>
+<span class="code">file:///app.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ from flask import...（源码）✅</span><br>
+<span class="code">file:///home/*/.ssh/id_rsa&nbsp;→ SSH 私钥</span>
+</div>
+
+<h2 class="section">4. 修复方案</h2>
+<h3>4.1 移除 ENTITY/SYSTEM 检测逻辑</h3>
+<div class="code-block">
+<span class="comment">// 删掉检测 ENTITY/SYSTEM 并 open() 读取文件的代码</span><br>
+<span class="danger">entity_match = re.search(r'<!ENTITY.*SYSTEM...', xml_data)</span><br>
+<span class="danger">file_content = open(file_path).read()  ← 删除</span>
+</div>
+
+<h3>4.2 清洗 XML 后再解析</h3>
+<div class="code-block">
+<span class="comment">// 1. 移除 DOCTYPE 声明</span><br>
+cleaned_xml = re.sub(<span class="string">r'<!DOCTYPE[^>]*>'</span>, <span class="string">''</span>, xml_data)<br><br>
+<span class="comment">// 2. 移除实体引用</span><br>
+cleaned_xml = re.sub(<span class="string">r'&\w+;'</span>, <span class="string">''</span>, cleaned_xml)<br><br>
+<span class="comment">// 3. 用 ElementTree 安全解析（默认不解析外部实体）</span><br>
+root = ET.fromstring(cleaned_xml)
+</div>
+
+<h2 class="section">5. 修复前后对照</h2>
+<div class="diff-box">
+  <div class="diff-item diff-before">
+    <div class="diff-label">❌ 修复前</div>
+    re.search ENTITY+SYSTEM → 提取路径<br>
+    open(path).read() → 读取任意文件<br>
+    替换 &xxe; → 返回文件内容<br><br>
+    → file:///etc/passwd ✅ 可读取
+  </div>
+  <div class="diff-item diff-after">
+    <div class="diff-label">✅ 修复后</div>
+    re.sub DOCTYPE → 删除声明<br>
+    re.sub &实体; → 清理引用<br>
+    ET.fromstring → 安全解析<br><br>
+    → file:///etc/passwd 🚫 被拦截
+  </div>
+</div>
+
+<h2 class="section">6. 修复验证</h2>
+<table>
+  <tr><th>#</th><th>测试</th><th style="width:100px;">结果</th></tr>
+  <tr><td>1</td><td>正常 XML 解析 → 成功</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>2</td><td>XXE file:///etc/passwd → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>3</td><td>XXE file://app.py → 被拦截</td><td class="status-fixed">✅ 通过</td></tr>
+  <tr><td>4</td><td>未登录访问 → 跳转</td><td class="status-fixed">✅ 通过</td></tr>
+</table>
+
+<h2 class="section">7. 全部九轮汇总</h2>
+<table>
+  <tr><th>轮次</th><th>审计内容</th><th>漏洞数</th><th>严重</th><th>高危</th><th>中危</th><th>状态</th></tr>
+  <tr><td>第 1 轮</td><td>密码安全</td><td>8</td><td>4</td><td>-</td><td>4</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 2 轮</td><td>SQL 注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 3 轮</td><td>文件上传</td><td>1</td><td>1</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 4 轮</td><td>业务逻辑</td><td>7</td><td>2</td><td>2</td><td>3</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 5 轮</td><td>文件包含</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 6 轮</td><td>CSRF</td><td>2</td><td>1</td><td>1</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 7 轮</td><td>SSRF</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 8 轮</td><td>命令注入</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td>第 9 轮</td><td>XXE</td><td>2</td><td>2</td><td>-</td><td>-</td><td class="status-fixed">✅</td></tr>
+  <tr><td><strong>合计</strong></td><td></td><td><strong>28</strong></td><td><strong>18</strong></td><td><strong>3</strong></td><td><strong>7</strong></td><td><strong>全部已修复</strong></td></tr>
+</table>
+
+<div class="footer-note">
+  <p>安全漏洞审计报告 · 第9轮 — XXE 安全 | 报告日期：2026-07-17</p>
+  <p>项目地址：https://github.com/sencly-book/user-management</p>
+</div>
+</body>
+</html>

